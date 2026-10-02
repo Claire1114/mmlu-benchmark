@@ -1,10 +1,35 @@
-# Security & Secrets
+# ==========================================
+# 1. Security, Secrets & Credentials (資安金鑰與憑證)
+# ==========================================
 .env
 *.env
 *.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*credentials*.json
+*service_account*.json
+secrets/
 configs/eval_config.local.yaml
 
-# Python & Virtual Environments
+# ==========================================
+# 2. ML Models, Weights & Large Artifacts (模型權重與大型檔案)
+# ==========================================
+models_cache/
+hf_cache/
+checkpoints/
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.gguf
+*.h5
+
+# ==========================================
+# 3. Python & Virtual Environments (環境與語言快取)
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,15 +38,46 @@ venv/
 env/
 .cache/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Benchmark Execution Outputs
+# ==========================================
+# 4. Testing & Coverage Outputs (測試與覆蓋率報告)
+# ==========================================
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# ==========================================
+# 5. Benchmark Execution & Build Artifacts (執行產物與日誌)
+# ==========================================
 results/raw/*.jsonl
 *.log
+logs/*.log
+build/
+dist/
+*.egg-info/
 
-# IDE & OS Specific Files
+# ==========================================
+# 6. IDE & Editor Specific Files (開發工具暫存)
+# ==========================================
 .vscode/
 .idea/
-.DS_Store
+*.swp
+*.swo
+*~
 
-# Preserve Git Directory Structure
+# ==========================================
+# 7. macOS System Files (macOS 系統隱藏檔)
+# ==========================================
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# ==========================================
+# 8. Preserve Git Directory Structure (結構保留白名單)
+# ==========================================
 !.gitkeep
