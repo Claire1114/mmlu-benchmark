@@ -1,0 +1,19 @@
+dataset:
+  name: "cais/mmlu"
+  subject: "global_facts"
+  split: "test"
+  sample_size: 5  # Boundary validation baseline
+
+models:
+  - name: "qwen2.5-0.5b"
+    type: "huggingface"
+    model_id: "Qwen/Qwen2.5-0.5B-Instruct"
+    device_map: "auto"
+  - name: "smollm2-1.7b"
+    type: "huggingface"
+    model_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+    device_map: "auto"
+  - name: "gemini-1.5-flash"
+    type: "gemini"
+    model_id: "gemini-1.5-flash"
+    max_retries: 5

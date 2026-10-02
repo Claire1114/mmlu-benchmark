@@ -1,0 +1,27 @@
+# Security & Secrets
+.env
+*.env
+*.key
+configs/eval_config.local.yaml
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.cache/
+.pytest_cache/
+
+# Benchmark Execution Outputs
+results/raw/*.jsonl
+*.log
+
+# IDE & OS Specific Files
+.vscode/
+.idea/
+.DS_Store
+
+# Preserve Git Directory Structure
+!.gitkeep
