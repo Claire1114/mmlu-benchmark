@@ -1,43 +1,60 @@
-# MMLU Benchmark Pipeline — Developer Agent Guidelines
+# MMLU Benchmark Pipeline — Agent Rules
 
-These rules are mandatory for every generated, edited, or reviewed Python module in this repository.
+## 1. Quick Commands
+- Run Pipeline: `python -m src.main --config configs/eval_config.yaml`
+- Run Tests: `pytest tests/ -v`
+- Run Single Test: `pytest tests/test_<module>.py -k "<test_name>"`
+- Lint & Format: `ruff check src/ tests/ && ruff format --check src/ tests/`
+- Type Check: `mypy src/ --strict`
 
-## 1. Type Safety
+## 2. Architecture & File Boundaries
+Strictly respect single-responsibility modular isolation:
+- `src/dataset_loader.py`: Raw dataset loading and formatting only. No model calls, scoring, or metric computation.
+- `src/models/`: Model wrappers implementing `ModelProtocol`. No data parsing or evaluation logic.
+- `src/evaluator.py`: Pure scoring and metric computation. No network calls or model loading.
+- `configs/eval_config.yaml`: Single source of truth for runtime configs (model IDs, batch size, retries). No hardcoded parameters.
 
-- Mandatory use of Python Type Hints (`typing` module) on **all** functions, methods, and interface contracts.
-- Annotate parameters and return types. Prefer `Optional[T]`, `Sequence[T]`, `Mapping[str, T]`, and `Protocol` over untyped `Any`.
-- Use `Any` only when a third-party API cannot be reasonably typed, and document why in the docstring.
+## 3. Implementation Standards
+- Type Safety: Mandatory type annotations on all signatures (`typing`, `Protocol`). Avoid `Any`; if unavoidable, document reason in docstring.
+- Style: PEP 8 naming, Google-style docstrings (Args, Returns, Raises).
+- Secrets: Read credentials exclusively via `os.getenv(...)`. Never commit `.env`, keys, or `*.local.yaml`.
 
-## 2. Code Style
+## 4. Testing & Mocking Rules
+- Every new or modified module must have matching unit tests under `tests/`.
+- Network & Heavy Compute Isolation: Always mock external endpoints (Hugging Face, Gemini API) and heavy model weights using `unittest.mock`.
+- Never execute live API calls or trigger remote weight downloads during `pytest`.
 
-- Strict PEP 8 naming: `snake_case` functions/modules, `PascalCase` classes, `UPPER_SNAKE_CASE` constants.
-- Google Style Docstrings for **all** classes and functions (Args, Returns, Raises as applicable).
-- Keep modules focused; avoid unrelated helpers in the same file.
+## 5. Agent Workflow & Verification Loop
+Before declaring any task or milestone complete, you MUST execute this loop:
+1. Self-Verify: Run `pytest tests/ -v` and `mypy src/ --strict` on modified code.
+2. Fix Regressions: If checks fail, diagnose and fix issues without weakening existing test assertions.
+3. Clean Diff: Avoid unrelated refactoring, unrequested comments, or external dependencies.
+4. Record Documentation: Automatically write or update the milestone document under `docs/` according to Section 6.
 
-## 3. Architectural Decoupling
+## 6. Milestone Documentation & Logs (Assignment Evidence)
+For each development milestone, refactoring step, or feature implementation:
+1. File Creation: Create a markdown file in `docs/` named sequentially:
+   - Format: `docs/step<N>_<task_name>.md` (e.g., `docs/step1_dataset_loader.md`, `docs/step2_model_interface.md`).
+2. Template Structure: Each step file must strictly adopt this layout:
 
-Maintain strict modular isolation:
+---
+# Step <N>: <Task Name>
 
-- Data Loading: `src/dataset_loader.py` only. No model I/O or metric computation.
-- Model Interfaces: `src/models/` only. Drivers must implement a shared protocol; no dataset parsing or scoring.
-- Metric Evaluation: `src/evaluator.py` only. No network calls or model loading.
+## 1. Step Objective
+- [Clear statement of the goal for this milestone]
 
-Do not import evaluation metrics into loaders, or Hugging Face / Gemini clients into the evaluator.
+## 2. Issues Identified (AI Review)
+- [Anti-patterns, missing types, edge cases, error-handling gaps, or architectural coupling found]
 
-## 4. Security
+## 3. Refactoring & Implementation
+- [Specific code modifications made to address the issues]
 
-- STRICTLY PROHIBIT hardcoding API keys, tokens, or credentials in source, tests, configs, or docs.
-- Cloud model drivers MUST read credentials dynamically from environment variables (e.g. `os.getenv("GEMINI_API_KEY")`).
-- Never commit `.env`, `*.key`, or `configs/eval_config.local.yaml`.
-- Tests that need cloud credentials MUST use mocks; never real keys.
+## 4. Verification & Before/After Comparison
+- **Pytest Output Summary**: [Summary of test passes, execution time, and coverage]
+- **Mypy Output Status**: [Static type verification status]
+- **Key Improvements**: [Quantifiable or qualitative gains, e.g., decoupling, resilience, coverage]
 
-## 5. Test-Driven Discipline
-
-- Every newly generated module MUST ship with corresponding `pytest` unit tests under `tests/`.
-- Prefer mock objects (`unittest.mock`) for Hugging Face models, Gemini clients, datasets I/O, and filesystem side effects.
-- Do not hit live APIs or download large model weights in unit tests.
-
-## 6. Configuration
-
-- Runtime parameters live in `configs/eval_config.yaml`.
-- Do not scatter magic numbers (sample size, retries, model IDs) in application code.
+## 5. Verification Artifacts & Logs
+- **Terminal Output Log**:
+  ```text
+  [Insert raw stdout/stderr output from pytest and mypy runs]
