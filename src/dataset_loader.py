@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import logging
 import math
+import os
+import random
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -21,7 +24,7 @@ LABEL_TO_LETTER: Mapping[int, str] = {0: "A", 1: "B", 2: "C", 3: "D"}
 LETTER_SET = frozenset(LABEL_TO_LETTER.values())
 EXPECTED_CHOICE_COUNT = 4
 
-PROMPT_TEMPLATE: str = (
+DEFAULT_PROMPT_TEMPLATE: str = (
     "The following are multiple choice questions (with answers) about {subject}.\n"
     "\n"
     "Question: {question}\n"
@@ -34,36 +37,78 @@ PROMPT_TEMPLATE: str = (
     "Answer:"
 )
 
+# 設定檔 dataset.prompt_template 缺失時的內建 fallback 範本；哨兵值用於佔位符預驗證。
+PROMPT_PLACEHOLDERS: Mapping[str, str] = {
+    "subject": "subject-sentinel",
+    "question": "question-sentinel",
+    "choice_A": "A-sentinel",
+    "choice_B": "B-sentinel",
+    "choice_C": "C-sentinel",
+    "choice_D": "D-sentinel",
+}
+
+# project.seed 缺失時的預設全域種子。
+DEFAULT_SEED: int = 42
+
 
 class MMLUDatasetLoader:
     """負責載入 MMLU、正規化欄位並產出結構化評測樣本。
+
+    依 ``dataset.categories`` 解析多科目領域結構，以
+    ``dataset.active_mode`` 決定每科目抽樣筆數，並以 ``project.seed``
+    建立可重現的抽樣隨機流；Prompt 由 ``dataset.prompt_template`` 組裝。
 
     Attributes:
         config_path: YAML 設定檔路徑。
         config: 解析後的設定內容。
         skipped_rows: 最近一次 ``load_data`` 因驗證失敗而略過的列數。
+        _subjects: 由 ``dataset.categories`` 解析出的科目清單（category/subject/focus）。
+        _seed: 全域抽樣種子（``project.seed``）。
+        _prompt_template: 已驗證的 Prompt 範本字串。
     """
 
     def __init__(self, config_path: str = "configs/eval_config.yaml") -> None:
         """載入 YAML 設定檔並初始化內部快取。
+
+        同時解析並驗證：``dataset.categories`` 多子集結構、``dataset.active_mode``
+        抽樣模式、``project.seed`` 全域種子、``dataset.prompt_template``
+        範本佔位符，以及 ``dataset.cache_dir`` 快取目錄。
 
         Args:
             config_path: 評測設定檔路徑，預設為 ``configs/eval_config.yaml``。
 
         Raises:
             FileNotFoundError: 當設定檔不存在時。
-            ValueError: 當 YAML 內容不是對應表時。
+            ValueError: 當 YAML 內容不是對應表，或必要結構
+                （categories / active_mode / seed / prompt 佔位符）缺失或非法時。
         """
         self.config_path: str = config_path
         self.config: Dict[str, Any] = self._load_config(config_path)
         self._records: List[Dict[str, Any]] = []
         self.skipped_rows: int = 0
+        dataset_cfg: Dict[str, Any] = self._dataset_config()
+        self._dataset_name: str = str(dataset_cfg.get("name") or "cais/mmlu")
+        self._split: str = str(dataset_cfg.get("split") or "test").strip() or "test"
+        self._cache_dir: Optional[str] = self._resolve_cache_dir(dataset_cfg)
+        self._seed: int = self._resolve_seed()
+        self._prompt_template: str = self._resolve_prompt_template(dataset_cfg)
+        self._subjects: List[Dict[str, str]] = self._parse_subjects(dataset_cfg)
+        self._active_mode: str = self._validate_active_mode()
+        LOGGER.info(
+            "MMLUDatasetLoader ready: dataset=%s split=%s active_mode=%s subjects=%s seed=%s",
+            self._dataset_name,
+            self._split,
+            self._active_mode,
+            [entry["subject"] for entry in self._subjects],
+            self._seed,
+        )
 
     def load_data(
         self,
         subject: Optional[str] = None,
-        split: str = "test",
+        split: Optional[str] = None,
         sample_size: Optional[int] = None,
+        seed: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """自 Hugging Face Hub 載入 MMLU 子集並正規化資料列。
 
@@ -71,35 +116,50 @@ class MMLUDatasetLoader:
         無法安全正規化的列會被略過（嚴格拒絕髒資料），並累計至
         ``skipped_rows``，同時輸出警告日誌。
 
+        當有效列數超過 ``sample_size`` 時，以由 ``(seed, subject)`` 派生的
+        隨機流抽取確定性子集（同輸入跨執行結果一致）；抽樣列保留原始
+        相對順序，使日誌與報表呈現穩定。
+
         Args:
-            subject: MMLU 科目名稱。若為 ``None``，改用設定檔中的科目。
-            split: 資料切分名稱，預設為 ``test``。
-            sample_size: 最多保留的筆數。``None`` 表示不額外截斷。
+            subject: MMLU 科目名稱；必填（新版設定檔不再含單一 ``dataset.subject`` 鍵）。
+            split: 資料切分名稱；預設採用設定檔 ``dataset.split``。
+            sample_size: 最多保留的筆數；``None`` 表示改用目前 ``active_mode``
+                抽樣模式的 ``sample_size_per_subject``；非正數回傳空清單。
+            seed: 抽樣種子；``None`` 表示使用設定檔 ``project.seed``。
 
         Returns:
             正規化後的資料列清單。空資料集會回傳空清單。
 
         Raises:
             ImportError: 當 ``datasets`` 套件不可用時。
-            ValueError: 當資料集載入失敗、必要設定缺失、或 split 不存在時。
+            ValueError: 當資料集載入失敗、subject 缺失、split 不存在、
+                抽樣模式無效，或 ``sample_size``／``seed`` 非整數時。
         """
-        dataset_cfg: Dict[str, Any] = dict(self.config.get("dataset") or {})
-        dataset_name: str = str(dataset_cfg.get("name") or "cais/mmlu")
-        resolved_subject: str = str(subject or dataset_cfg.get("subject") or "").strip()
+        resolved_subject: str = str(subject or "").strip()
         if not resolved_subject:
-            raise ValueError("MMLU subject is missing from arguments and config.")
+            raise ValueError("MMLU subject is missing from arguments.")
+        resolved_split: str = str(split or self._split).strip() or self._split
+
+        if sample_size is None:
+            resolved_size: int = self.resolve_sample_size()
+        else:
+            if isinstance(sample_size, bool) or not isinstance(sample_size, int):
+                raise ValueError(f"sample_size must be an integer, got {sample_size!r}.")
+            resolved_size = sample_size
 
         if load_dataset is None:
             raise ImportError("The 'datasets' package is required to load MMLU.")
 
         try:
-            raw_dataset: Any = load_dataset(dataset_name, resolved_subject, split=split)
+            raw_dataset: Any = load_dataset(
+                self._dataset_name, resolved_subject, **self._load_kwargs(resolved_split)
+            )
         except Exception as exc:
             raise ValueError(
-                f"Failed to load dataset '{dataset_name}' for subject '{resolved_subject}'."
+                f"Failed to load dataset '{self._dataset_name}' for subject '{resolved_subject}'."
             ) from exc
 
-        records: List[Dict[str, Any]] = self._coerce_records(raw_dataset, split=split)
+        records: List[Dict[str, Any]] = self._coerce_records(raw_dataset, split=resolved_split)
         normalized: List[Dict[str, Any]] = []
         skipped = 0
         for index, row in enumerate(records):
@@ -122,9 +182,22 @@ class MMLUDatasetLoader:
                 resolved_subject,
             )
 
-        if sample_size is not None:
-            size = int(sample_size)
-            normalized = [] if size <= 0 else normalized[:size]
+        if resolved_size <= 0:
+            normalized = []
+        elif len(normalized) > resolved_size:
+            if isinstance(seed, bool) or not isinstance(seed, int):
+                raise ValueError(f"seed must be an integer, got {seed!r}.")
+            resolved_seed: int = self._seed if seed is None else seed
+            normalized = self._seeded_sample(
+                normalized, resolved_size, resolved_seed, resolved_subject
+            )
+        elif normalized and len(normalized) < resolved_size:
+            LOGGER.warning(
+                "Subject %r has only %s valid rows; keeping all instead of sampling %s.",
+                resolved_subject,
+                len(normalized),
+                resolved_size,
+            )
 
         self._records = normalized
         return list(self._records)
@@ -144,7 +217,7 @@ class MMLUDatasetLoader:
         subject: str = str(item.get("subject") or "unknown")
         question: str = str(item.get("question") or "")
         choice_a, choice_b, choice_c, choice_d = self._extract_choices(item)
-        return PROMPT_TEMPLATE.format(
+        return self._prompt_template.format(
             subject=subject,
             question=question,
             choice_A=choice_a,
@@ -154,38 +227,81 @@ class MMLUDatasetLoader:
         )
 
     def get_samples(self) -> List[Dict[str, Any]]:
-        """回傳處理後可供評測使用的樣本清單。
+        """回傳全部設定科目的可供評測樣本清單。
 
-        若尚未呼叫 ``load_data``，會依設定檔自動載入資料。
+        依 ``dataset.categories`` 的宣告順序逐科載入，使用目前
+        ``dataset.active_mode`` 抽樣模式的抽樣筆數與 ``project.seed``，
+        並以 ``dataset.prompt_template`` 範本組裝 Prompt。
 
         Returns:
-            每筆包含 ``question_id``、``formatted_prompt``、``target_letter`` 與
-            ``subject`` 的字典清單。
+            每筆包含 ``question_id``、``formatted_prompt``、``target_letter``、
+            ``subject`` 與 ``category`` 的字典清單。
         """
-        if not self._records:
-            dataset_cfg: Dict[str, Any] = dict(self.config.get("dataset") or {})
-            self.load_data(
-                subject=dataset_cfg.get("subject"),
-                split=str(dataset_cfg.get("split") or "test"),
-                sample_size=dataset_cfg.get("sample_size"),
-            )
-
+        sample_size: int = self.resolve_sample_size()
         samples: List[Dict[str, Any]] = []
-        for item in self._records:
-            question_id = item.get("question_id")
-            answer_letter = item.get("answer_letter")
-            subject = item.get("subject")
-            if question_id is None or answer_letter is None or subject is None:
-                continue
-            samples.append(
-                {
-                    "question_id": str(question_id),
-                    "formatted_prompt": self.format_prompt(item),
-                    "target_letter": str(answer_letter),
-                    "subject": str(subject),
-                }
+        for entry in self._subjects:
+            records: List[Dict[str, Any]] = self.load_data(
+                subject=entry["subject"],
+                split=self._split,
+                sample_size=sample_size,
+                seed=self._seed,
             )
+            for item in records:
+                question_id = item.get("question_id")
+                answer_letter = item.get("answer_letter")
+                if question_id is None or answer_letter is None:
+                    continue
+                samples.append(
+                    {
+                        "question_id": str(question_id),
+                        "formatted_prompt": self.format_prompt(item),
+                        "target_letter": str(answer_letter),
+                        "subject": str(item.get("subject") or entry["subject"]),
+                        "category": entry["category"],
+                    }
+                )
         return samples
+
+    def iter_subjects(self) -> List[Dict[str, str]]:
+        """回傳 ``dataset.categories`` 設定的評測科目清單（YAML 宣告順序）。
+
+        Returns:
+            每筆含 ``category``（領域名）、``subject``（MMLU 子集名）與
+            ``focus``（考察重點說明，可能為空字串）的字典清單。
+
+        Note:
+            結構驗證於 ``__init__`` 執行；設定無效時實例無法建立，
+            故此處不再重複驗證。
+        """
+        return list(self._subjects)
+
+    def resolve_sample_size(self) -> int:
+        """回傳目前 ``dataset.active_mode`` 抽樣模式的每科目抽樣筆數。
+
+        Example:
+            ``active_mode: "smoke_test"`` 時回傳
+            ``dataset.modes.smoke_test.sample_size_per_subject``。
+
+        Raises:
+            ValueError: 當 ``dataset.modes`` 缺失或為空、``active_mode``
+                缺失或未定義於 ``modes``、或對應的
+                ``sample_size_per_subject`` 非正整數時。
+        """
+        dataset_cfg: Dict[str, Any] = self._dataset_config()
+        active_mode: str = self._validate_active_mode()
+        mode_cfg: Dict[str, Any] = dataset_cfg["modes"][active_mode]
+        raw_size: Any = mode_cfg.get("sample_size_per_subject")
+        if isinstance(raw_size, bool) or not isinstance(raw_size, int):
+            raise ValueError(
+                f"dataset.modes[{active_mode!r}].sample_size_per_subject must be an integer, "
+                f"got {raw_size!r}."
+            )
+        if raw_size <= 0:
+            raise ValueError(
+                f"dataset.modes[{active_mode!r}].sample_size_per_subject must be positive, "
+                f"got {raw_size}."
+            )
+        return raw_size
 
     @staticmethod
     def map_numeric_to_letter(label: Any) -> str:
@@ -379,3 +495,209 @@ class MMLUDatasetLoader:
             raise ValueError(f"Choice list contains None: {values!r}.")
 
         return str(values[0]), str(values[1]), str(values[2]), str(values[3])
+
+    @staticmethod
+    def _seeded_sample(
+        rows: Sequence[Dict[str, Any]],
+        k: int,
+        seed: int,
+        subject: str,
+    ) -> List[Dict[str, Any]]:
+        """以由 ``(seed, subject)`` 派生的種子從列池中確定性抽取 ``k`` 列。
+
+        使用字串化 ``random.Random`` 作為種子（SHA-512 派生、不受程序層
+        hash 隨機化影響），確保同輸入跨執行可重現同一抽樣結果。
+        抽樣列保留原始相對順序（依索引升序），使日誌與報表呈現穩定。
+
+        Args:
+            rows: 完整列池（呼叫端保證 ``0 < k < len(rows)``）。
+            k: 抽樣筆數。
+            seed: 全域種子（通常來自 ``project.seed``）。
+            subject: 科目名稱，使不同科目的隨機流彼此解耦。
+
+        Returns:
+            抽樣後的列清單，長度為 ``k``。
+        """
+        rng = random.Random(f"{seed}::{subject}")
+        chosen_indices: List[int] = sorted(rng.sample(range(len(rows)), k))
+        return [rows[index] for index in chosen_indices]
+
+    def _resolve_seed(self) -> int:
+        """讀取 ``project.seed`` 全域種子。
+
+        Returns:
+            整數種子；缺失時回退 ``DEFAULT_SEED``（42）並輸出警告日誌。
+
+        Raises:
+            ValueError: 當 seed 存在但非整數時。
+        """
+        project_cfg: Any = self.config.get("project")
+        raw: Any = project_cfg.get("seed") if isinstance(project_cfg, dict) else None
+        if raw is None:
+            LOGGER.warning("project.seed is missing; falling back to default seed %s.", DEFAULT_SEED)
+            return DEFAULT_SEED
+        if isinstance(raw, bool) or not isinstance(raw, int):
+            raise ValueError(f"project.seed must be an integer, got {raw!r}.")
+        return raw
+
+    def _resolve_prompt_template(self, dataset_cfg: Mapping[str, Any]) -> str:
+        """讀取並驗證 ``dataset.prompt_template``。
+
+        缺失或空值時輸出警告並回退內建預設範本；再以哨兵值呼叫一次
+        ``str.format`` 預驗證佔位符，使未知佔位符（如 ``{choice_E}``）
+        或格式錯誤於初始化時即失敗（fail-fast）。
+
+        Args:
+            dataset_cfg: ``dataset`` 區塊內容。
+
+        Returns:
+            已驗證的範本字串。
+
+        Raises:
+            ValueError: 當範本非字串、或佔位符無效時。
+        """
+        raw: Any = dataset_cfg.get("prompt_template")
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            LOGGER.warning("dataset.prompt_template is missing; using built-in default template.")
+            raw = DEFAULT_PROMPT_TEMPLATE
+        if not isinstance(raw, str):
+            raise ValueError(
+                f"dataset.prompt_template must be a string, got {type(raw).__name__}."
+            )
+        try:
+            raw.format(**PROMPT_PLACEHOLDERS)
+        except (KeyError, IndexError, ValueError) as exc:
+            raise ValueError(
+                f"dataset.prompt_template contains invalid placeholders: {exc}. "
+                f"Expected fields: {sorted(PROMPT_PLACEHOLDERS)}."
+            ) from exc
+        return raw
+
+    @staticmethod
+    def _resolve_cache_dir(dataset_cfg: Mapping[str, Any]) -> Optional[str]:
+        """讀取 ``dataset.cache_dir``；缺失或空值時回傳 ``None``。"""
+        raw: Any = dataset_cfg.get("cache_dir")
+        if raw is None:
+            return None
+        text: str = str(raw).strip()
+        return text or None
+
+    def _load_kwargs(self, split: str) -> Dict[str, Any]:
+        """建立 ``load_dataset`` 關鍵字參數；設定 ``cache_dir`` 時注入快取目錄。
+
+        優先使用安裝之 datasets 版本支援的 ``cache_dir`` 參數，
+        否則退而使用 ``download_cache``；並預設設定
+        ``HF_DATASETS_CACHE`` 環境變數（已設定時不覆寫），避免重複下載。
+
+        Args:
+            split: 資料切分名稱。
+
+        Returns:
+            供 ``load_dataset`` 使用的關鍵字參數字典（必含 ``split``）。
+        """
+        kwargs: Dict[str, Any] = {"split": split}
+        if not self._cache_dir or load_dataset is None:
+            return kwargs
+        try:
+            supported: set = set(inspect.signature(load_dataset).parameters)
+        except Exception:  # pragma: no cover - 簽名內省異常時退回環境變數
+            supported = set()
+        if "cache_dir" in supported:
+            kwargs["cache_dir"] = self._cache_dir
+        elif "download_cache" in supported:
+            kwargs["download_cache"] = self._cache_dir
+        os.environ.setdefault("HF_DATASETS_CACHE", self._cache_dir)
+        return kwargs
+
+    def _dataset_config(self) -> Dict[str, Any]:
+        """回傳 ``dataset`` 區塊並驗證其為對應表。
+
+        Raises:
+            ValueError: 當區塊缺失或不是對應表時。
+        """
+        dataset_cfg: Any = self.config.get("dataset")
+        if not isinstance(dataset_cfg, dict):
+            raise ValueError("Configuration must contain a 'dataset' mapping.")
+        return dataset_cfg
+
+    def _validate_active_mode(self) -> str:
+        """驗證 ``dataset.active_mode`` 抽樣模式，回傳其名稱。
+
+        於 ``__init__`` 與 ``resolve_sample_size`` 共用，使無效模式
+        （缺失、未定義於 ``modes``、或 ``modes`` 結構異常）皆於
+        載入器初始化時即失敗（fail-fast）。
+
+        Returns:
+            通過驗證的 ``active_mode`` 字串。
+
+        Raises:
+            ValueError: 當 ``dataset.modes`` 缺失或為空、``active_mode``
+                缺失或未定義於 ``modes`` 時。
+        """
+        dataset_cfg: Dict[str, Any] = self._dataset_config()
+        active_mode: Any = dataset_cfg.get("active_mode")
+        modes: Any = dataset_cfg.get("modes")
+        if not isinstance(modes, dict) or not modes:
+            raise ValueError("dataset.modes must be a non-empty mapping of mode -> parameters.")
+        if not isinstance(active_mode, str) or not active_mode.strip():
+            raise ValueError(f"dataset.active_mode is missing; available modes: {sorted(modes)}.")
+        mode_cfg: Any = modes.get(active_mode)
+        if not isinstance(mode_cfg, dict):
+            raise ValueError(
+                f"dataset.active_mode {active_mode!r} is not defined in dataset.modes; "
+                f"available modes: {sorted(modes)}."
+            )
+        return active_mode
+
+    def _parse_subjects(self, dataset_cfg: Mapping[str, Any]) -> List[Dict[str, str]]:
+        """解析 ``dataset.categories.<領域>.subjects`` 為有序（領域、科目、focus）清單。
+
+        保留 YAML 宣告順序；對結構異常（缺失或空 ``name``、
+        subjects 非清單、跨領域重複科目名）一律拒絕。
+
+        Args:
+            dataset_cfg: ``dataset`` 區塊內容。
+
+        Returns:
+            有序的科目清單（``category`` / ``subject`` / ``focus``）。
+
+        Raises:
+            ValueError: 當 categories 結構缺失或異常時。
+        """
+        categories: Any = dataset_cfg.get("categories")
+        if not isinstance(categories, dict) or not categories:
+            raise ValueError("dataset.categories must be a non-empty mapping.")
+        subjects: List[Dict[str, str]] = []
+        seen: Dict[str, str] = {}
+        for category_name, block in categories.items():
+            if not isinstance(block, dict):
+                raise ValueError(f"dataset.categories[{category_name!r}] must be a mapping.")
+            raw_subjects: Any = block.get("subjects")
+            if not isinstance(raw_subjects, list) or not raw_subjects:
+                raise ValueError(
+                    f"dataset.categories[{category_name!r}].subjects must be a non-empty list."
+                )
+            for entry in raw_subjects:
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"Subject entry under category {category_name!r} must be a mapping."
+                    )
+                name: str = str(entry.get("name") or "").strip()
+                if not name:
+                    raise ValueError(
+                        f"Subject entry under category {category_name!r} has a missing or empty 'name'."
+                    )
+                if name in seen:
+                    raise ValueError(
+                        f"Duplicate MMLU subject {name!r} found in categories "
+                        f"{seen[name]!r} and {category_name!r}."
+                    )
+                seen[name] = str(category_name)
+                subjects.append(
+                    {
+                        "category": str(category_name),
+                        "subject": name,
+                        "focus": str(entry.get("focus") or "").strip(),
+                    }
+                )
+        return subjects

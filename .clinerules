@@ -1,0 +1,43 @@
+# MMLU Benchmark Pipeline — Developer Agent Guidelines
+
+These rules are mandatory for every generated, edited, or reviewed Python module in this repository.
+
+## 1. Type Safety
+
+- Mandatory use of Python Type Hints (`typing` module) on **all** functions, methods, and interface contracts.
+- Annotate parameters and return types. Prefer `Optional[T]`, `Sequence[T]`, `Mapping[str, T]`, and `Protocol` over untyped `Any`.
+- Use `Any` only when a third-party API cannot be reasonably typed, and document why in the docstring.
+
+## 2. Code Style
+
+- Strict PEP 8 naming: `snake_case` functions/modules, `PascalCase` classes, `UPPER_SNAKE_CASE` constants.
+- Google Style Docstrings for **all** classes and functions (Args, Returns, Raises as applicable).
+- Keep modules focused; avoid unrelated helpers in the same file.
+
+## 3. Architectural Decoupling
+
+Maintain strict modular isolation:
+
+- Data Loading: `src/dataset_loader.py` only. No model I/O or metric computation.
+- Model Interfaces: `src/models/` only. Drivers must implement a shared protocol; no dataset parsing or scoring.
+- Metric Evaluation: `src/evaluator.py` only. No network calls or model loading.
+
+Do not import evaluation metrics into loaders, or Hugging Face / Gemini clients into the evaluator.
+
+## 4. Security
+
+- STRICTLY PROHIBIT hardcoding API keys, tokens, or credentials in source, tests, configs, or docs.
+- Cloud model drivers MUST read credentials dynamically from environment variables (e.g. `os.getenv("GEMINI_API_KEY")`).
+- Never commit `.env`, `*.key`, or `configs/eval_config.local.yaml`.
+- Tests that need cloud credentials MUST use mocks; never real keys.
+
+## 5. Test-Driven Discipline
+
+- Every newly generated module MUST ship with corresponding `pytest` unit tests under `tests/`.
+- Prefer mock objects (`unittest.mock`) for Hugging Face models, Gemini clients, datasets I/O, and filesystem side effects.
+- Do not hit live APIs or download large model weights in unit tests.
+
+## 6. Configuration
+
+- Runtime parameters live in `configs/eval_config.yaml`.
+- Do not scatter magic numbers (sample size, retries, model IDs) in application code.
