@@ -81,3 +81,4 @@ dist/
 # 8. Preserve Git Directory Structure (結構保留白名單)
 # ==========================================
 !.gitkeep
+.aider*

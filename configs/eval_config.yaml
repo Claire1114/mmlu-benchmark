@@ -1,19 +1,212 @@
-dataset:
-  name: "cais/mmlu"
-  subject: "global_facts"
-  split: "test"
-  sample_size: 5  # Boundary validation baseline
+# =============================================================================
+# Pegatron MMLU Benchmark — 評測管線執行設定
+# 本檔為全域執行參數來源；請勿在此寫入 API 金鑰或本機覆寫值。
+# =============================================================================
 
+# project：專案基本資訊，用於識別本次評測實驗與產出根目錄。
+project:
+  # name：專案名稱，作為日誌、產出檔案與實驗追蹤的識別字串。
+  name: "pegatron-mmlu-benchmark"
+  # version：設定檔／管線語意版本，變更抽樣策略或指標定義時應遞增。
+  version: "1.0.0"
+  # seed：全域隨機數種子，確保資料抽樣與可重現實驗在多次執行間一致。
+  seed: 42
+  # output_dir：全域輸出根目錄，評測產物（預測、指標、圖表）預設寫入此處。
+  output_dir: "./outputs"
+
+# dataset：資料集來源、快取、兩階段抽樣測試模式，以及八個代表性子集定義。
+dataset:
+  # name：Hugging Face Hub 上的來源資料集識別碼（cais/mmlu）。
+  name: "cais/mmlu"
+  # language：題目語言代碼；本評測使用英文原題（en）。
+  language: "en"
+  # split：資料切割名稱；正式評測使用官方 test 切分，避免與訓練／驗證重疊。
+  split: "test"
+  # cache_dir：本機資料集快取目錄，避免重複下載 cais/mmlu。
+  cache_dir: "./data/cache"
+  # prompt_template：多選題 Prompt 範本，由 DataLoader 以 str.format 填入欄位。
+  # 佔位符：{subject}、{question}、{choice_A}、{choice_B}、{choice_C}、{choice_D}。
+  # 將格式解耦至 YAML，避免 DataLoader 寫死字串，便於後續抽換題型或語言。
+  prompt_template: |
+    The following are multiple choice questions (with answers) about {subject}.
+
+    Question: {question}
+    A. {choice_A}
+    B. {choice_B}
+    C. {choice_C}
+    D. {choice_D}
+
+    Format your output strictly as: 'The correct answer is (X)' where X is A, B, C, or D.
+    Answer:
+  # active_mode：目前啟用的測試模式。可選值：
+  #   - "smoke_test"：冒煙測試（每子集 10 題），驗證端到端 Pipeline 通暢性。
+  #   - "demo"：正式評測（每子集 30 題），取得足夠樣本以呈現模型能力梯度。
+  active_mode: "smoke_test"
+  # modes：兩階段抽樣測試模式定義；實際抽樣筆數由 active_mode 對應區塊決定。
+  modes:
+    # smoke_test：冒煙測試。每子集抽樣 10 題。
+    # 目標：驗證端到端 Pipeline 通暢性，包含 Prompt 範本、正規化擷取 A/B/C/D、
+    # JSON 儲存與例外重試，而非追求統計顯著的能力比較。
+    smoke_test:
+      # sample_size_per_subject：每個科目（子集）抽取的題數。
+      sample_size_per_subject: 10
+      # purpose：本模式的評測目標說明，供日誌與報告引用。
+      purpose: "驗證端到端 Pipeline 通暢性（Prompt 範本、正規化擷取 A/B/C/D、JSON 儲存與例外重試）。"
+    # demo：正式評測。每子集抽樣 30 題。
+    # 目標：具備足夠統計樣本數以消除單題偶然誤差，能在雷達圖或柱狀圖上
+    # 清晰呈現 0.5B、1.7B 與 Gemini 的能力梯度差距。
+    demo:
+      # sample_size_per_subject：每個科目（子集）抽取的題數。
+      sample_size_per_subject: 30
+      # purpose：本模式的評測目標說明，供日誌與報告引用。
+      purpose: "具備足夠統計樣本數以消除單題偶然誤差，並在雷達圖／柱狀圖呈現 0.5B、1.7B 與 Gemini 的能力梯度差距。"
+  # categories：四大知識領域及其代表性 MMLU 子集（Subjects）與考察重點。
+  categories:
+    # STEM：理工科技領域，考察程式邏輯、演算法與多步驟數學推理。
+    STEM:
+      # description：本領域的總體考察重點。
+      description: "理工科技：程式邏輯、演算法結構與高中級數學多步驟推理計算。"
+      # subjects：本領域納入評測的代表性子集清單。
+      subjects:
+        # college_computer_science：大學計算機科學；考察程式邏輯與演算法結構。
+        - name: "college_computer_science"
+          focus: "程式邏輯與演算法結構"
+        # high_school_mathematics：高中數學；考察多步驟推理與計算能力。
+        - name: "high_school_mathematics"
+          focus: "高中數學多步驟推理計算能力"
+    # Humanities：人文領域，考察抽象概念、邏輯思辨與跨文化事實記憶。
+    Humanities:
+      # description：本領域的總體考察重點。
+      description: "人文：抽象概念理解、邏輯思辨，以及跨文化事實與背景脈絡記憶。"
+      # subjects：本領域納入評測的代表性子集清單。
+      subjects:
+        # philosophy：哲學；考察抽象概念理解與邏輯思辨。
+        - name: "philosophy"
+          focus: "抽象概念理解與邏輯思辨"
+        # world_religions：世界宗教；考察跨文化事實與背景脈絡記憶。
+        - name: "world_religions"
+          focus: "跨文化事實與背景脈絡記憶"
+    # Social_Sciences：社會科學領域，考察量化推理與行為理論掌握度。
+    Social_Sciences:
+      # description：本領域的總體考察重點。
+      description: "社科：量化統計與經濟理論推理，以及社會科學專有名詞與行為理論。"
+      # subjects：本領域納入評測的代表性子集清單。
+      subjects:
+        # econometrics：計量經濟學；考察量化統計與經濟理論推理。
+        - name: "econometrics"
+          focus: "量化統計與經濟理論推理"
+        # high_school_psychology：高中心理學；考察專有名詞與行為理論掌握度。
+        - name: "high_school_psychology"
+          focus: "社會科學專有名詞與行為理論掌握度"
+    # Other：專業應用領域，考察高門檻臨床判斷與複雜法律情境理解。
+    Other:
+      # description：本領域的總體考察重點。
+      description: "專業應用：高門檻醫學臨床判斷，以及複雜情境式法律條文與判例應用。"
+      # subjects：本領域納入評測的代表性子集清單。
+      subjects:
+        # clinical_knowledge：臨床知識；考察高門檻醫學臨床判斷。
+        - name: "clinical_knowledge"
+          focus: "高門檻醫學臨床判斷"
+        # professional_law：專業法律；考察複雜情境式法律條文理解與判例應用。
+        - name: "professional_law"
+          focus: "複雜情境式法律條文理解與判例應用"
+
+# models：待評測模型清單。各模型共用下方 generation 參數，並依 type 分流驅動。
+# Hugging Face 模型由本機／裝置對應載入；Gemini 由雲端 API 呼叫，金鑰僅能來自環境變數。
 models:
+  # qwen2.5-0.5b：輕量本地指令微調模型，作為 0.5B 能力下界對照。
   - name: "qwen2.5-0.5b"
+    # type：驅動類型；huggingface 表示透過 Transformers 本機推論。
     type: "huggingface"
+    # model_id：Hugging Face Hub 模型識別碼。
     model_id: "Qwen/Qwen2.5-0.5B-Instruct"
+    # device_map：裝置配置策略；auto 由函式庫自動分配 GPU／CPU。
     device_map: "auto"
+    # generation：本模型推論時的解碼參數（與全域評測設定對齊，temperature=0 以求可重現）。
+    generation:
+      # temperature：取樣溫度；0.0 為近乎貪婪解碼，降低隨機性以便公平比較。
+      temperature: 0.0
+      # max_tokens：單次生成的最大新 tokens 數，足夠輸出「The correct answer is (X)」格式。
+      max_tokens: 128
+      # top_p：核取樣機率門檻；1.0 表示不額外截斷機率質量（搭配 temperature=0 時效果等同貪婪）。
+      top_p: 1.0
+  # smollm2-1.7b：中型本地指令微調模型，作為 1.7B 能力中段對照。
   - name: "smollm2-1.7b"
+    # type：驅動類型；huggingface 表示透過 Transformers 本機推論。
     type: "huggingface"
+    # model_id：Hugging Face Hub 模型識別碼。
     model_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+    # device_map：裝置配置策略；auto 由函式庫自動分配 GPU／CPU。
     device_map: "auto"
+    # generation：本模型推論時的解碼參數。
+    generation:
+      # temperature：取樣溫度；0.0 為近乎貪婪解碼。
+      temperature: 0.0
+      # max_tokens：單次生成的最大新 tokens 數。
+      max_tokens: 128
+      # top_p：核取樣機率門檻。
+      top_p: 1.0
+  # gemini-1.5-flash：雲端 Gemini 模型，作為高能力上界對照。
   - name: "gemini-1.5-flash"
+    # type：驅動類型；gemini 表示透過 Google Gemini API 遠端推論。
     type: "gemini"
+    # model_id：Gemini API 模型識別碼。
     model_id: "gemini-1.5-flash"
+    # api_key_env_var：讀取 API 金鑰的環境變數名稱；嚴禁在設定檔硬編碼金鑰。
+    api_key_env_var: "GEMINI_API_KEY"
+    # max_retries：雲端呼叫失敗時的最大重試次數（含瞬時網路／配額錯誤）。
     max_retries: 5
+    # generation：本模型推論時的解碼參數。
+    generation:
+      # temperature：取樣溫度；0.0 為近乎貪婪解碼。
+      temperature: 0.0
+      # max_tokens：單次生成的最大新 tokens 數。
+      max_tokens: 128
+      # top_p：核取樣機率門檻。
+      top_p: 1.0
+
+# evaluation：批次執行、答案擷取、防禦性重試／超時，以及評測指標定義。
+evaluation:
+  # batch_size：每次推論的樣本批大小；設為 1 以便逐題量測延遲並簡化失敗重試範圍。
+  batch_size: 1
+  # max_workers：多執行緒平行度；同時處理的 worker 上限。
+  # 僅適用於雲端 API 模型（type: gemini），可並行發出請求以提升吞吐。
+  # 本機 PyTorch 模型（type: huggingface）應循序執行（Sequential），
+  # 以防止顯存（VRAM）或記憶體（RAM）耗盡（OOM）；請勿對本機推論套用此平行度。
+  max_workers: 4
+  # answer_regex：答案正規化擷取正則（忽略大小寫、容許可選前綴與括號）。
+  # 可匹配純字母（A）、括號形式（(A)）以及 "The answer is A"／"The correct answer is (A)" 等變體。
+  # 擷取群組 1 為最終選項字母 A–D；舊寫法 "(([A-D]))" 過嚴，上述輸出會全部匹配失敗。
+  answer_regex: "(?i)(?:The correct answer is\\s*)?\\(?([A-D])\\)?"
+  # retry：推論失敗時的防禦性重試與指數退避設定。
+  retry:
+    # max_retries：單一樣本推論失敗後的最大重試次數。
+    max_retries: 3
+    # backoff_factor：指數退避係數；第 n 次重試等待時間約為 backoff_factor^(n-1) 秒量級。
+    backoff_factor: 2.0
+    # timeout_seconds：單次推論請求逾時秒數，逾時視為可重試錯誤。
+    timeout_seconds: 30
+  # metrics：本次評測要計算並寫入總結檔的指標清單。
+  metrics:
+    # accuracy：整體正確率（全科目加總後的答對題數／有效題數）。
+    - name: "accuracy"
+      description: "整體正確率"
+    # latency_per_sample：單筆數據平均推理延遲，單位為秒／題。
+    - name: "latency_per_sample"
+      description: "單筆數據平均推理延遲（秒／題）"
+    # category_level_accuracy：階層化正確率，須同時支援四大領域與個別子集雙層級分開呈現。
+    - name: "category_level_accuracy"
+      description: "階層化正確率（大領域與個別子集雙層級分開呈現）"
+
+# logging：日誌層級與各類產出檔案路徑。
+logging:
+  # level：Python logging 層級；INFO 記錄管線進度、抽樣與重試，不含除錯雜訊。
+  level: "INFO"
+  # pipeline_log：執行日誌檔路徑，記錄載入、推論、重試與例外摘要。
+  pipeline_log: "./logs/pipeline.log"
+  # predictions_path：模型預測紀錄（JSON Lines），每列一題含提示、原始輸出與正規化答案。
+  predictions_path: "./results/predictions.jsonl"
+  # metrics_summary_csv：評測結果總結（CSV），便於試算表與後處理繪圖。
+  metrics_summary_csv: "./results/metrics_summary.csv"
+  # metrics_summary_json：評測結果總結（JSON），保留巢狀階層化正確率結構。
+  metrics_summary_json: "./results/metrics_summary.json"

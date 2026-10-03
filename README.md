@@ -6,7 +6,7 @@ Enterprise-grade automated evaluation pipeline for Large Language Models (LLMs),
 
 This repository implements a systematic MMLU (`cais/mmlu`) benchmark workflow for Pegatron R&D. The pipeline is designed to:
 
-- Load a configurable MMLU subject and split with a bounded `sample_size` for smoke validation.
+- Load the configured multi-subject MMLU suite (`dataset.categories`, four domains × two subjects) with mode-driven sampling (`dataset.active_mode` → `modes.<mode>.sample_size_per_subject`, seeded by `project.seed`).
 - Run inference against heterogeneous model backends (local Hugging Face CausalLM and Gemini).
 - Score predictions independently of model I/O and persist raw JSONL logs plus summary tables.
 
@@ -22,7 +22,7 @@ Modules are strictly decoupled:
 
 | Concern | Location | Responsibility |
 | --- | --- | --- |
-| Data loading | `src/dataset_loader.py` | MMLU fetch, subject/split/sample slicing |
+| Data loading | `src/dataset_loader.py` | MMLU fetch across configured subjects, mode-driven seeded sampling, category mapping |
 | Model interfaces | `src/models/` | Hugging Face and Gemini drivers |
 | Metric evaluation | `src/evaluator.py` | Accuracy and report aggregation |
 | Runtime parameters | `configs/eval_config.yaml` | Dataset and model settings |
@@ -38,6 +38,7 @@ mmlu-benchmark/
 │   └── eval_config.yaml
 ├── src/
 │   ├── __init__.py
+│   ├── dataset_loader.py
 │   └── models/
 │       └── __init__.py
 ├── tests/
@@ -83,7 +84,7 @@ With coverage:
 pytest --cov=src --cov-report=term-missing
 ```
 
-Smoke tests should honor `dataset.sample_size` from `configs/eval_config.yaml` (baseline: 5 examples) and mock model backends. Do not download `Qwen/Qwen2.5-0.5B-Instruct` or `HuggingFaceTB/SmolLM2-1.7B-Instruct` inside unit tests.
+Smoke tests should honor `dataset.modes[dataset.active_mode].sample_size_per_subject` from `configs/eval_config.yaml` (smoke_test baseline: 10 per subject) and mock model backends. Do not download `Qwen/Qwen2.5-0.5B-Instruct` or `HuggingFaceTB/SmolLM2-1.7B-Instruct` inside unit tests.
 
 ## 5. Execution Guide (`main.py`)
 
