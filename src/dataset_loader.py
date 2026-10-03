@@ -14,7 +14,9 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import yaml
 
 try:
-    from datasets import load_dataset
+    # 選用依賴：datasets 未安裝（import-not-found）或缺型別 stub
+    # （import-untyped）時，import 警告屬預期內，故以無代碼 ignore 靜音。
+    from datasets import load_dataset  # type: ignore
 except ImportError:  # pragma: no cover
     load_dataset = None  # type: ignore[assignment]
 
@@ -301,7 +303,7 @@ class MMLUDatasetLoader:
                 f"dataset.modes[{active_mode!r}].sample_size_per_subject must be positive, "
                 f"got {raw_size}."
             )
-        return raw_size
+        return int(raw_size)
 
     @staticmethod
     def map_numeric_to_letter(label: Any) -> str:
@@ -538,7 +540,7 @@ class MMLUDatasetLoader:
             return DEFAULT_SEED
         if isinstance(raw, bool) or not isinstance(raw, int):
             raise ValueError(f"project.seed must be an integer, got {raw!r}.")
-        return raw
+        return int(raw)
 
     def _resolve_prompt_template(self, dataset_cfg: Mapping[str, Any]) -> str:
         """讀取並驗證 ``dataset.prompt_template``。
@@ -599,7 +601,7 @@ class MMLUDatasetLoader:
         if not self._cache_dir or load_dataset is None:
             return kwargs
         try:
-            supported: set = set(inspect.signature(load_dataset).parameters)
+            supported: set[str] = set(inspect.signature(load_dataset).parameters)
         except Exception:  # pragma: no cover - 簽名內省異常時退回環境變數
             supported = set()
         if "cache_dir" in supported:
