@@ -19,6 +19,7 @@ configs/eval_config.local.yaml
 models_cache/
 hf_cache/
 checkpoints/
+data/cache/
 *.bin
 *.pt
 *.pth

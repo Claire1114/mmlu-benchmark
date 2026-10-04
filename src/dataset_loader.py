@@ -14,11 +14,10 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import yaml
 
 try:
-    # 選用依賴：datasets 未安裝（import-not-found）或缺型別 stub
-    # （import-untyped）時，import 警告屬預期內，故以無代碼 ignore 靜音。
-    from datasets import load_dataset  # type: ignore
+    # 選用依賴：datasets 未安裝或缺型別 stub
+    from datasets import load_dataset  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
-    load_dataset = None  # type: ignore[assignment]
+    load_dataset = None
 
 LOGGER = logging.getLogger(__name__)
 

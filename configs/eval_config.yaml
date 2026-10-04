@@ -174,10 +174,12 @@ evaluation:
   # 本機 PyTorch 模型（type: huggingface）應循序執行（Sequential），
   # 以防止顯存（VRAM）或記憶體（RAM）耗盡（OOM）；請勿對本機推論套用此平行度。
   max_workers: 4
-  # answer_regex：答案正規化擷取正則（忽略大小寫、容許可選前綴與括號）。
-  # 可匹配純字母（A）、括號形式（(A)）以及 "The answer is A"／"The correct answer is (A)" 等變體。
-  # 擷取群組 1 為最終選項字母 A–D；舊寫法 "(([A-D]))" 過嚴，上述輸出會全部匹配失敗。
-  answer_regex: "(?i)(?:The correct answer is\\s*)?\\(?([A-D])\\)?"
+  # answer_regex：第一層（Strict）嚴格答案擷取正則（忽略大小寫、括號可選、字邊界守衛）。
+  # 僅對準 Prompt 標準格式 "The correct answer is (X)"；\b 邊界守衛可避免誤擷取詞內嵌字母
+  # （修正前 "The answer is B" 會誤擷取 "answer" 的 a、"I don't know" 會誤擷取 "don't" 的 d）。
+  # 非標準輸出（純字母、推理文字）由 src/evaluator.py 第二層 fallback 正則 \b([A-D])\b 處理
+  # （取最後一個獨立字母）；兩層皆失配時標記 INVALID（None），不中斷管線。
+  answer_regex: "(?i)\\bthe correct answer is\\s*\\(?\\b([A-D])\\b\\)?"
   # retry：推論失敗時的防禦性重試與指數退避設定。
   retry:
     # max_retries：單一樣本推論失敗後的最大重試次數。

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # 腳本名稱: auto_audit.sh
-# 職責: 呼叫 Aider (Adversarial Reviewer & QA) 執行單模組代碼審查、重構、測試生成與驗證
+# 職責: 呼叫 Aider (Adversarial Reviewer & QA) 執行單模組代碼審查、重構、測試生成與驗證，
+#       並在測試通過後自動執行規範化 Git Commit。
 # ==============================================================================
 
 set -euo pipefail
@@ -80,7 +81,7 @@ aider --model "$MODEL" \
 echo "✅ 單元測試已生成於 ${TEST_FILE}"
 
 # ------------------------------------------------------------------------------
-# 步驟 D: Pytest Verify (執行測試並記錄結果，未通過立即中止)
+# 步驟 D: Pytest Verify & Auto Commit (執行測試並記錄結果，通過後自動 Commit)
 # ------------------------------------------------------------------------------
 echo "🚦 [步驟 D/D] 執行 Pytest 驗證..."
 echo -e "\n## 4. Pytest 驗證日誌\n" >> "$LOG_FILE"
@@ -90,9 +91,29 @@ if pytest "$TEST_FILE" -v 2>&1 | tee -a "$LOG_FILE"; then
     echo '```' >> "$LOG_FILE"
     echo -e "\n**驗證結果**: ✅ 測試全數通過！\n" >> "$LOG_FILE"
     echo "🎉 模組 ${MODULE_NAME} 審查、重構與測試驗證全數通過！"
+
+    # --------------------------------------------------------------------------
+    # 自動化 Git Commit 區塊
+    # --------------------------------------------------------------------------
+    echo "📦 正在準備 Git Commit..."
+
+    # 精確暫存本次異動檔案
+    git add "$TARGET_FILE" "$TEST_FILE" "$LOG_FILE"
+
+    # 檢查是否有檔案處於 staged 狀態
+    if git diff --cached --quiet; then
+        echo "ℹ️  沒有需要提交的變更 (Working tree clean)。"
+    else
+        # 依照你的規範產出 commit message
+        COMMIT_TITLE="feat: ${MODULE_NAME}"
+        COMMIT_BODY="Completed adversarial review, refactoring, and mock unit tests for ${MODULE_NAME}.\nVerified with pytest: all tests passed."
+
+        git commit -m "$COMMIT_TITLE" -m "$(echo -e "$COMMIT_BODY")"
+        echo "✅ 已成功提交 Commit: [${COMMIT_TITLE}]"
+    fi
 else
     echo '```' >> "$LOG_FILE"
     echo -e "\n**驗證結果**: ❌ 單元測試失敗！\n" >> "$LOG_FILE"
-    echo "❌ 模組 ${MODULE_NAME} 測試失敗，請檢查 ${LOG_FILE} 與 ${TEST_FILE}"
+    echo "❌ 模組 ${MODULE_NAME} 測試失敗，取消 Commit。請檢查 ${LOG_FILE} 與 ${TEST_FILE}"
     exit 1
 fi
