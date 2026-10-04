@@ -145,7 +145,9 @@ class MMLUDatasetLoader:
             resolved_size: int = self.resolve_sample_size()
         else:
             if isinstance(sample_size, bool) or not isinstance(sample_size, int):
-                raise ValueError(f"sample_size must be an integer, got {sample_size!r}.")
+                raise ValueError(
+                    f"sample_size must be an integer, got {sample_size!r}."
+                )
             resolved_size = sample_size
 
         if load_dataset is None:
@@ -153,14 +155,18 @@ class MMLUDatasetLoader:
 
         try:
             raw_dataset: Any = load_dataset(
-                self._dataset_name, resolved_subject, **self._load_kwargs(resolved_split)
+                self._dataset_name,
+                resolved_subject,
+                **self._load_kwargs(resolved_split),
             )
         except Exception as exc:
             raise ValueError(
                 f"Failed to load dataset '{self._dataset_name}' for subject '{resolved_subject}'."
             ) from exc
 
-        records: List[Dict[str, Any]] = self._coerce_records(raw_dataset, split=resolved_split)
+        records: List[Dict[str, Any]] = self._coerce_records(
+            raw_dataset, split=resolved_split
+        )
         normalized: List[Dict[str, Any]] = []
         skipped = 0
         for index, row in enumerate(records):
@@ -419,7 +425,9 @@ class MMLUDatasetLoader:
         Returns:
             正規化後的資料字典；若答案或選項無法驗證則回傳 ``None``。
         """
-        subject: str = str(row.get("subject") or fallback_subject).strip() or fallback_subject
+        subject: str = (
+            str(row.get("subject") or fallback_subject).strip() or fallback_subject
+        )
         question: str = str(row.get("question") or "").strip()
         try:
             choices: List[str] = list(self._extract_choices(row))
@@ -486,7 +494,9 @@ class MMLUDatasetLoader:
             values = list(raw_choices)
         else:
             # 無合法 choices 結構時，視為髒資料（不填補空字串）。
-            raise ValueError(f"Choices must be a sequence or mapping, got {type(raw_choices)!r}.")
+            raise ValueError(
+                f"Choices must be a sequence or mapping, got {type(raw_choices)!r}."
+            )
 
         if len(values) != EXPECTED_CHOICE_COUNT:
             raise ValueError(
@@ -535,7 +545,10 @@ class MMLUDatasetLoader:
         project_cfg: Any = self.config.get("project")
         raw: Any = project_cfg.get("seed") if isinstance(project_cfg, dict) else None
         if raw is None:
-            LOGGER.warning("project.seed is missing; falling back to default seed %s.", DEFAULT_SEED)
+            LOGGER.warning(
+                "project.seed is missing; falling back to default seed %s.",
+                DEFAULT_SEED,
+            )
             return DEFAULT_SEED
         if isinstance(raw, bool) or not isinstance(raw, int):
             raise ValueError(f"project.seed must be an integer, got {raw!r}.")
@@ -559,7 +572,9 @@ class MMLUDatasetLoader:
         """
         raw: Any = dataset_cfg.get("prompt_template")
         if raw is None or (isinstance(raw, str) and not raw.strip()):
-            LOGGER.warning("dataset.prompt_template is missing; using built-in default template.")
+            LOGGER.warning(
+                "dataset.prompt_template is missing; using built-in default template."
+            )
             raw = DEFAULT_PROMPT_TEMPLATE
         if not isinstance(raw, str):
             raise ValueError(
@@ -639,9 +654,13 @@ class MMLUDatasetLoader:
         active_mode: Any = dataset_cfg.get("active_mode")
         modes: Any = dataset_cfg.get("modes")
         if not isinstance(modes, dict) or not modes:
-            raise ValueError("dataset.modes must be a non-empty mapping of mode -> parameters.")
+            raise ValueError(
+                "dataset.modes must be a non-empty mapping of mode -> parameters."
+            )
         if not isinstance(active_mode, str) or not active_mode.strip():
-            raise ValueError(f"dataset.active_mode is missing; available modes: {sorted(modes)}.")
+            raise ValueError(
+                f"dataset.active_mode is missing; available modes: {sorted(modes)}."
+            )
         mode_cfg: Any = modes.get(active_mode)
         if not isinstance(mode_cfg, dict):
             raise ValueError(
@@ -672,7 +691,9 @@ class MMLUDatasetLoader:
         seen: Dict[str, str] = {}
         for category_name, block in categories.items():
             if not isinstance(block, dict):
-                raise ValueError(f"dataset.categories[{category_name!r}] must be a mapping.")
+                raise ValueError(
+                    f"dataset.categories[{category_name!r}] must be a mapping."
+                )
             raw_subjects: Any = block.get("subjects")
             if not isinstance(raw_subjects, list) or not raw_subjects:
                 raise ValueError(

@@ -13,7 +13,9 @@ import yaml
 from src.dataset_loader import DEFAULT_PROMPT_TEMPLATE, MMLUDatasetLoader
 
 MOCK_SUBJECT: str = "global_facts"
-REAL_CONFIG_PATH: str = str(Path(__file__).resolve().parents[1] / "configs" / "eval_config.yaml")
+REAL_CONFIG_PATH: str = str(
+    Path(__file__).resolve().parents[1] / "configs" / "eval_config.yaml"
+)
 
 
 def _write_config(
@@ -51,7 +53,10 @@ def _write_config(
         "language": "en",
         "split": "test",
         "modes": {
-            "smoke_test": {"sample_size_per_subject": sample_size, "purpose": "smoke test"},
+            "smoke_test": {
+                "sample_size_per_subject": sample_size,
+                "purpose": "smoke test",
+            },
             "demo": {"sample_size_per_subject": sample_size + 25, "purpose": "demo"},
         },
         "categories": categories,
@@ -464,7 +469,9 @@ def test_iter_subjects_order_and_category_mapping(tmp_path: Path) -> None:
             "subjects": [{"name": "gamma_subject", "focus": "f2"}],
         },
     }
-    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, categories=categories))
+    loader = MMLUDatasetLoader(
+        config_path=_write_config(tmp_path, categories=categories)
+    )
     assert loader.iter_subjects() == [
         {"category": "STEM", "subject": "alpha_subject", "focus": "f1"},
         {"category": "STEM", "subject": "beta_subject", "focus": ""},
@@ -511,10 +518,14 @@ def test_real_config_exposes_eight_subjects_and_smoke_mode() -> None:
         },
     ],
 )
-def test_invalid_categories_rejected(tmp_path: Path, bad_categories: Dict[str, Any]) -> None:
+def test_invalid_categories_rejected(
+    tmp_path: Path, bad_categories: Dict[str, Any]
+) -> None:
     """結構異常（空清單／缺 name／非清單／跨領域重名）必須被拒絕。"""
     with pytest.raises(ValueError):
-        MMLUDatasetLoader(config_path=_write_config(tmp_path, categories=bad_categories))
+        MMLUDatasetLoader(
+            config_path=_write_config(tmp_path, categories=bad_categories)
+        )
 
 
 def test_missing_categories_rejected(tmp_path: Path) -> None:
@@ -537,7 +548,9 @@ def test_resolve_sample_size_follows_active_mode(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("active_mode", [None, "full_benchmark"])
-def test_unknown_active_mode_rejected(tmp_path: Path, active_mode: Optional[str]) -> None:
+def test_unknown_active_mode_rejected(
+    tmp_path: Path, active_mode: Optional[str]
+) -> None:
     """active_mode 缺失或未知模式名必須被拒絕並列出可用模式。"""
     config_path = _write_config(tmp_path, active_mode=active_mode)
     with pytest.raises(ValueError, match="active_mode"):
@@ -628,7 +641,9 @@ def test_non_integer_sample_size_rejected(
 def test_custom_prompt_template_used(tmp_path: Path) -> None:
     """設定檔自訂 prompt_template 應優於內建預設被採用。"""
     template = "SUBJECT={subject}|Q={question}|A={choice_A}|B={choice_B}|C={choice_C}|D={choice_D}"
-    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, prompt_template=template))
+    loader = MMLUDatasetLoader(
+        config_path=_write_config(tmp_path, prompt_template=template)
+    )
     prompt = loader.format_prompt(_mock_mmlu_rows()[0])
     assert prompt == (
         f"SUBJECT={MOCK_SUBJECT}|Q=Which ocean is the largest?"
@@ -638,7 +653,9 @@ def test_custom_prompt_template_used(tmp_path: Path) -> None:
 
 def test_missing_prompt_template_falls_back_to_default(tmp_path: Path) -> None:
     """dataset.prompt_template 缺失時應回退內建範本而不失敗。"""
-    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, prompt_template=None))
+    loader = MMLUDatasetLoader(
+        config_path=_write_config(tmp_path, prompt_template=None)
+    )
     prompt = loader.format_prompt(_mock_mmlu_rows()[0])
     assert (
         "The following are multiple choice questions (with answers) about global_facts."
@@ -654,7 +671,9 @@ def test_invalid_prompt_template_rejected_at_init(
 ) -> None:
     """佔位符無效應於初始化即失敗，而非逐題格式化時才爆炸。"""
     with pytest.raises(ValueError, match="prompt_template"):
-        MMLUDatasetLoader(config_path=_write_config(tmp_path, prompt_template=bad_template))
+        MMLUDatasetLoader(
+            config_path=_write_config(tmp_path, prompt_template=bad_template)
+        )
 
 
 @patch("src.dataset_loader.load_dataset")
@@ -717,7 +736,9 @@ def test_cache_dir_sets_hf_environment(
 ) -> None:
     """dataset.cache_dir 設定時應預設寫入 HF_DATASETS_CACHE 環境變數。"""
     cache_path = str(tmp_path / "hf_cache")
-    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, include_cache_dir=True))
+    loader = MMLUDatasetLoader(
+        config_path=_write_config(tmp_path, include_cache_dir=True)
+    )
     old = os.environ.pop("HF_DATASETS_CACHE", None)
     try:
         mock_load_dataset.return_value = _mock_mmlu_rows()
