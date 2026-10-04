@@ -65,7 +65,7 @@ When executing any task, you must operate strictly in two distinct phases:
 ## 6. Milestone Documentation & Logs (Assignment Evidence)
 For each development milestone, refactoring step, or feature implementation:
 1. File Creation: Create a markdown file in `docs/` named sequentially:
-   - Format: `docs/step<N>_<task_name>.md` (e.g., `docs/step1_dataset_loader.md`, `docs/step2_model_interface.md`).
+   - Format: `docs/step<N>.md` (e.g., `docs/step1_dataset_loader.md`, `docs/step2_model_interface.md`).
 2. Template Structure: Each step file must strictly adopt this layout with MANDATORY Markdown tables:
 
 ---

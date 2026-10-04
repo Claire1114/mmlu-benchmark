@@ -83,3 +83,8 @@ dist/
 # ==========================================
 !.gitkeep
 .aider*
+
+# Jupyter 探索與測試筆記本
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
