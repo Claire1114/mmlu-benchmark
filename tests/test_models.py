@@ -21,6 +21,7 @@ from src.evaluator import Evaluator
 from src.models import (
     ERROR_PREFIX,
     BaseModelInterface,
+    HuggingFacePipelineInterface,
     ModelProtocol,
     MockModelInterface,
     OpenAICompatibleInterface,
@@ -697,7 +698,8 @@ class TestBuildModelInterface:
                 build_model_interface({"type": "groq", "model_id": "m"})
 
     def test_later_phase_types_raise_not_implemented(self) -> None:
-        for later_type in ("huggingface", "gemini"):
+        # huggingface 已於本階段實作，移出待實作清單；gemini 仍排程後續。
+        for later_type in ("gemini",):
             with pytest.raises(NotImplementedError):
                 build_model_interface(
                     {"type": later_type, "name": "x", "model_id": "m"}
@@ -729,14 +731,186 @@ class TestBuildModelInterface:
         assert iface._retrying.wait(SimpleNamespace(attempt_number=2)) == 2.0
 
     def test_supported_types_constant(self) -> None:
+        # huggingface / hf_pipeline 於本階段加入（HF 本地 pipeline 驅動）。
         assert SUPPORTED_TYPES == {
             "mock",
             "openai_compatible",
             "groq",
             "ollama",
             "openrouter",
+            "huggingface",
+            "hf_pipeline",
         }
 
     def test_generated_interfaces_satisfy_protocol(self) -> None:
         iface = build_model_interface({"type": "mock", "name": "m"})
         assert isinstance(iface, ModelProtocol)
+
+
+def _hf_generation_result(text: str) -> List[Dict[str, str]]:
+    """建立 pipeline text-generation 回傳物件（純記憶體，零網路）。"""
+    return [{"generated_text": text}]
+
+
+class TestHuggingFacePipeline:
+    """HuggingFacePipelineInterface：全離線（mock transformers.pipeline）。"""
+
+    def test_init_passes_hub_options_to_pipeline(self) -> None:
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": "hf-test-token"}),
+            patch("src.models.huggingface.pipeline") as pipeline_mock,
+        ):
+            HuggingFacePipelineInterface(
+                model_name="qwen",
+                model_id="Qwen/Qwen2.5-0.5B",
+                device="cpu",
+                torch_dtype="float16",
+            )
+        pipeline_mock.assert_called_once_with(
+            "text-generation",
+            model="Qwen/Qwen2.5-0.5B",
+            device="cpu",
+            model_kwargs={"torch_dtype": "float16"},
+            token="hf-test-token",
+        )
+
+    def test_init_without_token_passes_none(self) -> None:
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": ""}),
+            patch("src.models.huggingface.pipeline") as pipeline_mock,
+        ):
+            HuggingFacePipelineInterface(model_name="qwen", model_id="org/model")
+        pipeline_mock.assert_called_once_with(
+            "text-generation",
+            model="org/model",
+            device=None,
+            model_kwargs=None,
+            token=None,
+        )
+
+    def test_invalid_parameters_raise(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            with pytest.raises(ValueError, match="model_id"):
+                HuggingFacePipelineInterface(model_name="q", model_id="  ")
+            with pytest.raises(ValueError, match="device"):
+                HuggingFacePipelineInterface(
+                    model_name="q",
+                    model_id="m",
+                    device=1.5,  # type: ignore[arg-type]
+                )
+            with pytest.raises(ValueError, match="max_new_tokens"):
+                HuggingFacePipelineInterface(
+                    model_name="q", model_id="m", max_new_tokens=0
+                )
+            with pytest.raises(ValueError, match="temperature"):
+                HuggingFacePipelineInterface(
+                    model_name="q", model_id="m", temperature=float("nan")
+                )
+
+    def test_predict_strips_prompt_prefix(self) -> None:
+        prompt = "Question: 1+1=?\nA. 1\nB. 2\nAnswer:"
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.return_value = _hf_generation_result(
+                f"{prompt}\nThe correct answer is (B)"
+            )
+        assert iface.predict(prompt) == "The correct answer is (B)"
+
+    def test_predict_requests_full_text_and_max_tokens(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(
+                model_name="q", model_id="m", max_new_tokens=64
+            )
+            iface._pipeline.return_value = _hf_generation_result("p ok")
+            iface.predict("p")
+        iface._pipeline.assert_called_once_with(
+            "p", max_new_tokens=64, return_full_text=True
+        )
+
+    def test_predict_passes_sampling_kwargs_when_temperature_positive(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(
+                model_name="q", model_id="m", temperature=0.7
+            )
+            iface._pipeline.return_value = _hf_generation_result("p X")
+            iface.predict("p")
+        kwargs = iface._pipeline.call_args.kwargs
+        assert kwargs["do_sample"] is True
+        assert kwargs["temperature"] == 0.7
+
+    def test_predict_returns_full_text_when_prefix_mismatch(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.return_value = _hf_generation_result(
+                "Sure! The correct answer is (C)"
+            )
+        assert iface.predict("different prompt") == "Sure! The correct answer is (C)"
+
+    def test_predict_empty_result_returns_empty_string(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.return_value = []
+        assert iface.predict("p") == ""
+
+    def test_predict_exception_returns_error_sentinel(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.side_effect = RuntimeError("CUDA out of memory")
+        raw = iface.predict("p")
+        assert raw == "ERROR: HuggingFace Inference Failed - CUDA out of memory"
+        # 第二層對接：哨兵字串由 Evaluator 判定 INVALID。
+        assert Evaluator().extract_answer(raw) is None
+
+    def test_predict_invalid_record_structure_returns_sentinel(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.return_value = ["plain-string-record"]
+        raw = iface.predict("p")
+        assert raw.startswith("ERROR: HuggingFace Inference Failed")
+
+    def test_predict_non_str_prompt_raises_type_error(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+        with pytest.raises(TypeError):
+            iface.predict(123)  # type: ignore[arg-type]
+
+
+class TestBuildHuggingFaceInterface:
+    """build_model_interface：huggingface / hf_pipeline 分支。"""
+
+    def test_huggingface_type_with_device_and_generation(self) -> None:
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": ""}),
+            patch("src.models.huggingface.pipeline") as pipeline_mock,
+        ):
+            iface = build_model_interface(
+                {
+                    "type": "huggingface",
+                    "name": "hf1",
+                    "model_id": "org/model",
+                    "device": 0,
+                    "max_new_tokens": 64,
+                    "generation": {"temperature": 0.5},
+                }
+            )
+        assert isinstance(iface, HuggingFacePipelineInterface)
+        assert isinstance(iface, ModelProtocol)
+        pipeline_mock.assert_called_once_with(
+            "text-generation",
+            model="org/model",
+            device=0,
+            model_kwargs=None,
+            token=None,
+        )
+
+    def test_hf_pipeline_alias_type(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = build_model_interface(
+                {"type": "hf_pipeline", "name": "hf2", "model_id": "org/model"}
+            )
+        assert isinstance(iface, HuggingFacePipelineInterface)
+
+    def test_huggingface_missing_model_id_raises(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            with pytest.raises(ValueError, match="model_id"):
+                build_model_interface({"type": "huggingface", "name": "hf3"})

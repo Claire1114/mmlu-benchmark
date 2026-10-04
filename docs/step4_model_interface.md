@@ -73,3 +73,29 @@
   $ mypy src/ --strict
   Success: no issues found in 8 source files
   ```
+
+## 6. HuggingFace 介面擴充說明（Step 4 後續階段）
+
+- **新增模組**：`src/models/huggingface.py` — `HuggingFacePipelineInterface`（繼承 `BaseModelInterface`），以 `transformers.pipeline("text-generation")` 驅動 Qwen／Llama 等本地模型；`SUPPORTED_TYPES` 加入 `huggingface`／`hf_pipeline`（別名），`build_model_interface` 依 `configs/eval_config.yaml` 之 `models[]` 區塊建構（`device`／`max_new_tokens`／`temperature`／`torch_dtype` 自設定讀取）。
+- **關鍵機制**：
+  - **Prompt 前綴裁剪**：以 `return_full_text=True` 請求，`_generate()` 自動裁掉回傳文字中輸入 prompt 前綴，僅回傳新生成文字；輸出未以 prompt 起頭（chat 模板差異）時記錄警告並回傳去除首尾空白之全文。
+  - **Token 安全性**：`HF_TOKEN` 僅經 `os.getenv("HF_TOKEN", None)` 讀取並傳入 pipeline，無寫死憑證。
+  - **第一層例外防禦**：`predict()` 全推論路徑 try...except 兜底，失敗回傳 `ERROR: HuggingFace Inference Failed - <msg>` 哨兵（權重載入失敗、OOM、輸出結構異常），與 Evaluator Tier-3 兜底分層。
+  - **建構期 fail-fast**：`model_id` 非空、`device` 型別（int/str/None）、`max_new_tokens` 正整數、`temperature` 有限非負值，非法值一律 `ValueError`。
+- **型別修復**：`transformers.pipelines` 未顯式匯出 `Pipeline`，mypy strict 報 `attr-defined`，於 `src/models/huggingface.py` 匯入行加 `# type: ignore[attr-defined]` 抑噪（唯一直屬封裝層，不影響其餘 strict 檢查）。
+- **測試（全離線）**：mock `src.models.huggingface.pipeline`，無真實權重下載／無網路：`TestHuggingFacePipeline`（建構參數驗證、prompt 前綴裁剪、空輸出、例外 → 哨兵、`TypeError` fail-fast）＋ `TestBuildHuggingFaceInterface`（`huggingface`／`hf_pipeline` 別名、device/generation 參數對接、缺 `model_id` fail-fast）。
+- **全綠紀錄**：`pytest tests/` **194 passed in 4.46s**（模型層含 HF 介面測試全數通過；覆蓋率：not measured）。
+
+  ```text
+  $ mypy src/ --strict
+  Success: no issues found in 9 source files
+
+  $ ruff check src/ tests/
+  All checks passed!
+
+  $ ruff format --check src/ tests/
+  13 files already formatted
+
+  $ pytest tests/ -o timeout=10
+  ============================= 194 passed in 4.46s ==============================
+  ```

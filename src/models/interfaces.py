@@ -6,18 +6,22 @@
   ``evaluation.`` 設定區塊建構具體模型介面（執行參數單一來源為
   ``configs/eval_config.yaml``）。
 
-Step 4 第一階段支援類型：``mock``、``openai_compatible``、``groq``、
-``ollama``、``openrouter``；``huggingface``／``gemini`` 排程於 Step 4
-後續階段，現行拋出 ``NotImplementedError``。
+Step 4 支援類型：``mock``、``openai_compatible``、``groq``、``ollama``、
+``openrouter``、``huggingface``／``hf_pipeline``（HF 本地 pipeline 驅動）；
+``gemini`` 排程於 Step 4 後續階段，現行拋出 ``NotImplementedError``。
 """
 
 from __future__ import annotations
 
 import logging
 import math
-from typing import Mapping, Optional, Protocol, runtime_checkable
+from typing import Mapping, Optional, Protocol, Union, runtime_checkable
 
 from src.models.base import BaseModelInterface
+from src.models.huggingface import (
+    DEFAULT_MAX_NEW_TOKENS,
+    HuggingFacePipelineInterface,
+)
 from src.models.mock_model import MockModelInterface
 from src.models.openai_compatible import (
     DEFAULT_BACKOFF_FACTOR,
@@ -31,13 +35,21 @@ from src.models.openai_compatible import (
 
 LOGGER = logging.getLogger(__name__)
 
-#: Step 4 第一階段支援的模型類型。
+#: Step 4 支援的模型類型。
 SUPPORTED_TYPES: frozenset[str] = frozenset(
-    {"mock", "openai_compatible", "groq", "ollama", "openrouter"}
+    {
+        "mock",
+        "openai_compatible",
+        "groq",
+        "ollama",
+        "openrouter",
+        "huggingface",
+        "hf_pipeline",
+    }
 )
 
-#: 排程於 Step 4 後續階段的模型類型（本地 HF／Gemini 雲端驅動）。
-_LATER_PHASE_TYPES: frozenset[str] = frozenset({"huggingface", "gemini"})
+#: 排程於 Step 4 後續階段的模型類型（Gemini 雲端驅動）。
+_LATER_PHASE_TYPES: frozenset[str] = frozenset({"gemini"})
 
 
 @runtime_checkable
@@ -264,7 +276,7 @@ def build_model_interface(
         ValueError: 當 ``type``／``name``／``model_id`` 缺失或非法、
             或雲端 provider 之 API key 環境變數缺失時。
         NotImplementedError: 當 type 為 Step 4 後續階段排程驅動
-            （``huggingface``／``gemini``）時。
+            （``gemini``）時。
     """
     if not isinstance(model_cfg, Mapping):
         raise ValueError(
@@ -310,6 +322,38 @@ def build_model_interface(
     generation: Mapping[str, object] = _as_mapping_block(
         model_cfg.get("generation"), "models[].generation"
     )
+
+    if model_type in ("huggingface", "hf_pipeline"):
+        raw_device: object = model_cfg.get("device")
+        if isinstance(raw_device, int) and not isinstance(raw_device, bool):
+            device: Optional[Union[int, str]] = raw_device
+        elif isinstance(raw_device, str):
+            device = raw_device
+        elif raw_device is None:
+            device = None
+        else:
+            LOGGER.warning(
+                "models[].device value %r is invalid; using the default device.",
+                raw_device,
+            )
+            device = None
+        return HuggingFacePipelineInterface(
+            model_name=name,
+            model_id=model_id,
+            device=device,
+            torch_dtype=model_cfg.get("torch_dtype"),
+            max_new_tokens=_coerce_int(
+                model_cfg.get("max_new_tokens"),
+                DEFAULT_MAX_NEW_TOKENS,
+                "models[].max_new_tokens",
+            ),
+            temperature=_coerce_float(
+                generation.get("temperature"),
+                0.0,
+                "models[].generation.temperature",
+            ),
+        )
+
     retry: Mapping[str, object] = _as_mapping_block(
         evaluation_cfg.get("retry"), "evaluation.retry"
     )

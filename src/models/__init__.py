@@ -5,6 +5,9 @@
 - ``BaseModelInterface``：抽象基底（``predict`` 單題推論 ＋
   ``predict_batch`` 循序批次與 Runner 預測紀錄組裝）。
 - ``MockModelInterface``：離線 Mock 模型（固定／隨機選項格式）。
+- ``HuggingFacePipelineInterface``：HF 本地模型 pipeline 驅動
+  （``transformers.pipeline`` text-generation），內建 prompt 前綴裁剪與
+  ``ERROR:`` 哨兵兜底。
 - ``OpenAICompatibleInterface``：OpenAI SDK 相容 API（Groq／Ollama／
   OpenRouter 等），內建指數退避重試與 ``ERROR:`` 哨兵兜底（第一層
   例外防護）。
@@ -13,6 +16,7 @@
 """
 
 from src.models.base import ERROR_PREFIX, BaseModelInterface
+from src.models.huggingface import HuggingFacePipelineInterface
 from src.models.interfaces import (
     ModelProtocol,
     SUPPORTED_TYPES,
@@ -27,6 +31,7 @@ from src.models.openai_compatible import (
 __all__ = [
     "ERROR_PREFIX",
     "BaseModelInterface",
+    "HuggingFacePipelineInterface",
     "MockModelInterface",
     "OpenAICompatibleInterface",
     "ModelProtocol",
