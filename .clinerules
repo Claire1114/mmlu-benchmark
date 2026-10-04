@@ -2,7 +2,7 @@
 
 ## 1. Quick Commands
 - Run Pipeline: `python -m src.main --config configs/eval_config.yaml`
-- Run Tests: `pytest tests/ -v`
+- Run Tests: `pytest tests/ -v -o timeout=10`
 - Run Single Test: `pytest tests/test_<module>.py -k "<test_name>"`
 - Lint & Format: `ruff check src/ tests/ && ruff format --check src/ tests/`
 - Type Check: `mypy src/ --strict`
@@ -14,6 +14,13 @@ Strictly respect single-responsibility modular isolation:
 - `src/evaluator.py`: Pure scoring and metric computation. No network calls or model loading.
 - `configs/eval_config.yaml`: Single source of truth for runtime configs (model IDs, batch size, retries). No hardcoded parameters.
 
+### Pipeline Execution Lifecycle (Sequential Execution Flow)
+The end-to-end benchmark must follow a strict single-direction pipeline:
+1. One-time Loading: `DataLoader.get_samples()` loads, normalizes, and samples all categories upfront once.
+2. Sequential Model Loop: Iterate through configured models sequentially (`for model in models`) to prevent GPU OOM and rate limits.
+3. Step per Model: Load Model -> Predict on pre-loaded samples -> Free VRAM/Resources (`torch.cuda.empty_cache()`) -> Evaluate with `evaluator.evaluate()` -> Persist predictions and metrics.
+4. Aggregation: Benchmark summary table and comparison artifacts generated after all models finish.
+
 ## 3. Implementation Standards
 - Type Safety: Mandatory type annotations on all signatures (`typing`, `Protocol`). Avoid `Any`; if unavoidable, document reason in docstring.
 - Style: PEP 8 naming, Google-style docstrings (Args, Returns, Raises).
@@ -24,37 +31,80 @@ Strictly respect single-responsibility modular isolation:
 - Network & Heavy Compute Isolation: Always mock external endpoints (Hugging Face, Gemini API) and heavy model weights using `unittest.mock`.
 - Never execute live API calls or trigger remote weight downloads during `pytest`.
 
-## 5. Agent Workflow & Verification Loop
-Before declaring any task or milestone complete, you MUST execute this loop:
-1. Self-Verify: Run `pytest tests/ -v` and `mypy src/ --strict` on modified code.
-2. Fix Regressions: If checks fail, diagnose and fix issues without weakening existing test assertions.
-3. Clean Diff: Avoid unrelated refactoring, unrequested comments, or external dependencies.
-4. Record Documentation: Automatically write or update the milestone document under `docs/` according to Section 6.
+## 5. Agent Workflow: Two-Phase Dual Roles
+
+When executing any task, you must operate strictly in two distinct phases:
+
+### Phase A: Builder Mode (Implementation)
+- Role: Software Engineer.
+- Goal: Implement the minimal viable feature, configurations, and baseline tests according to Section 2-4 and specific task requirements.
+- Automated Self-Correction Loop:
+  1. Run `ruff check src/ tests/`, `pytest tests/ -v -o timeout=10`, and `mypy src/ --strict`.
+  2. When a check fails, determine whether the root cause is the implementation, the test, or the environment by consulting the task requirements.
+  3. Never weaken validation or assertions merely to obtain a passing result.
+  4. If a test is demonstrably incorrect, correct it and document the requirement or evidence supporting the change.
+  5. If progress is blocked or repeated attempts make no progress, stop the loop and report the blocker.
+- Stop Condition: Once baseline tests, linting, and mypy pass cleanly, PAUSE and output:
+  "Phase A complete. Baseline tests passing. Awaiting transition to Reviewer Mode."
+- DO NOT generate the final milestone document under `docs/` in this phase.
+
+### Phase B: Reviewer & Refactor Mode (AI Review & Audit)
+- Role: Principal Architect & Quality Auditor.
+- Goal:
+  1. Adversarial Audit: Review against task-specific requirements and acceptance criteria. Do not assume Builder Mode decisions are correct. Audit code smells, missing edge-case handling, tight coupling, and boundary weaknesses.
+  2. Conditional Refactoring: Refactor only when a concrete issue is identified. If no actionable issues are found, document that outcome. Add stress/edge-case unit tests if gaps are found.
+  3. Automated Self-Correction Loop:
+     - Run `ruff check src/ tests/`, `pytest tests/ -v -o timeout=10`, and `mypy src/ --strict`.
+     - Resolve regressions or newly identified failures using the same criteria as Phase A (fix code or invalid tests, never weaken assertions).
+     - Stop and report if blocked.
+  4. Logging: Generate `docs/step<N>_<task_name>.md` following Section 6. Report only verification results actually obtained; mark coverage as "not measured" unless explicitly collected.
+  5. Commit Proposal (Do Not Auto-Commit):
+     - Present the exact `git add` and `git commit` commands with a conventional commit message.
+     - Wait for user confirmation before executing git commits.
 
 ## 6. Milestone Documentation & Logs (Assignment Evidence)
 For each development milestone, refactoring step, or feature implementation:
 1. File Creation: Create a markdown file in `docs/` named sequentially:
    - Format: `docs/step<N>_<task_name>.md` (e.g., `docs/step1_dataset_loader.md`, `docs/step2_model_interface.md`).
-2. Template Structure: Each step file must strictly adopt this layout:
+2. Template Structure: Each step file must strictly adopt this layout with MANDATORY Markdown tables:
 
 ---
 # Step <N>: <Task Name>
 
 ## 1. Step Objective
-- [Clear statement of the goal for this milestone]
+- **Task**: [Clear statement of the goal for this milestone]
+- **AI Tool**: Cline (VS Code AI coding agent)
+- **Collaboration Pattern**: Plan (Analysis & Refactor Proposal) -> Act (Implementation & Auto-Verification)
+- **AI Efficiency Gains**: [Quantifiable gains: closed-loop speedup, auto-generated edge tests, boundary isolation]
 
 ## 2. Issues Identified (AI Review)
-- [Anti-patterns, missing types, edge cases, error-handling gaps, or architectural coupling found]
+[Mandatory Table: Review findings against acceptance criteria, edge cases, or code smells]
+
+| # | Issue Identified | Risk / Potential Defect |
+| :--- | :--- | :--- |
+| 1 | [Issue description] | [Why this is risky or breaks requirements] |
+| 2 | [Issue description] | [Why this is risky or breaks requirements] |
 
 ## 3. Refactoring & Implementation
-- [Specific code modifications made to address the issues]
+- **Core Modifications**: [Specific code modifications made to resolve the issues]
+- **Edge Cases Handled**: [New boundary conditions supported]
+- **Key Design Decisions**: [Trade-offs or architectural decisions made]
 
 ## 4. Verification & Before/After Comparison
-- **Pytest Output Summary**: [Summary of test passes, execution time, and coverage]
-- **Mypy Output Status**: [Static type verification status]
-- **Key Improvements**: [Quantifiable or qualitative gains, e.g., decoupling, resilience, coverage]
+- **Pytest Output Summary**: [Summary of test passes, execution time, and coverage status ("not measured" if not configured)]
+- **Ruff & Mypy Output Status**: [Linting and static type verification status]
+
+### Before / After Comparison Matrix
+[Mandatory Table: Direct comparison of components before and after refactoring]
+
+| Dimension | Before Refactor | After Refactor |
+| :--- | :--- | :--- |
+| Architecture / Design | [Original state] | [Decoupled / Improved state] |
+| Robustness / Edge Cases| [Original state] | [Fail-fast / Validated state] |
+| Test Coverage | [e.g., 11 passed] | [e.g., 34 passed (23 new edge tests)] |
 
 ## 5. Verification Artifacts & Logs
 - **Terminal Output Log**:
   ```text
-  [Insert raw stdout/stderr output from pytest and mypy runs]
+  [Insert raw stdout/stderr output from pytest, ruff, and mypy runs]
+  ```
