@@ -617,6 +617,63 @@ def test_seeded_sampling_differs_across_seeds_and_subjects(
 
 
 @patch("src.dataset_loader.load_dataset")
+def test_seed_none_falls_back_to_config_seed(
+    mock_load_dataset: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """``seed=None``（文件化預設值）應使用設定檔 ``project.seed`` 抽樣。
+
+    對齊 ``load_data`` 契約：``None`` 表示使用設定檔 ``project.seed``；
+    與顯式傳入相同種子必須產生完全相同的確定性子集。
+    """
+    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, seed=7))
+    mock_load_dataset.return_value = _mock_mmlu_pool(30)
+    implicit = [
+        row["question"]
+        for row in loader.load_data(subject=MOCK_SUBJECT, sample_size=10)
+    ]
+    explicit = [
+        row["question"]
+        for row in loader.load_data(subject=MOCK_SUBJECT, sample_size=10, seed=7)
+    ]
+    assert len(implicit) == 10
+    assert implicit == explicit
+
+
+@patch("src.dataset_loader.load_dataset")
+def test_seed_none_with_missing_config_seed_uses_default(
+    mock_load_dataset: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """``project.seed`` 缺失時，``seed=None`` 回落預設種子 42。"""
+    loader = MMLUDatasetLoader(config_path=_write_config(tmp_path, seed=None))
+    mock_load_dataset.return_value = _mock_mmlu_pool(30)
+    implicit = [
+        row["question"]
+        for row in loader.load_data(subject=MOCK_SUBJECT, sample_size=10)
+    ]
+    explicit = [
+        row["question"]
+        for row in loader.load_data(subject=MOCK_SUBJECT, sample_size=10, seed=42)
+    ]
+    assert len(implicit) == 10
+    assert implicit == explicit
+
+
+@patch("src.dataset_loader.load_dataset")
+def test_explicit_non_integer_seed_still_rejected(
+    mock_load_dataset: MagicMock,
+    loader: MMLUDatasetLoader,
+) -> None:
+    """顯式傳入非整數 seed（字串／bool）仍必須拒絕，fallback 不吞掉型別錯誤。"""
+    mock_load_dataset.return_value = _mock_mmlu_pool(30)
+    with pytest.raises(ValueError, match="seed must be an integer"):
+        loader.load_data(subject=MOCK_SUBJECT, sample_size=10, seed="42")
+    with pytest.raises(ValueError, match="seed must be an integer"):
+        loader.load_data(subject=MOCK_SUBJECT, sample_size=10, seed=True)
+
+
+@patch("src.dataset_loader.load_dataset")
 def test_sample_size_larger_than_pool_returns_all_rows(
     mock_load_dataset: MagicMock,
     loader: MMLUDatasetLoader,

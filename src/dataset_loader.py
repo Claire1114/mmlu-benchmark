@@ -192,9 +192,11 @@ class MMLUDatasetLoader:
         if resolved_size <= 0:
             normalized = []
         elif len(normalized) > resolved_size:
-            if isinstance(seed, bool) or not isinstance(seed, int):
-                raise ValueError(f"seed must be an integer, got {seed!r}.")
+            # seed=None 為文件化預設值（使用設定檔 project.seed），須先
+            # resolve 再驗證；``self._seed`` 已於 __init__ 驗證為整數。
             resolved_seed: int = self._seed if seed is None else seed
+            if isinstance(resolved_seed, bool) or not isinstance(resolved_seed, int):
+                raise ValueError(f"seed must be an integer, got {seed!r}.")
             normalized = self._seeded_sample(
                 normalized, resolved_size, resolved_seed, resolved_subject
             )
