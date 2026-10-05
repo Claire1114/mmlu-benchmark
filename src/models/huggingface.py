@@ -5,9 +5,13 @@
 
 - **Token 安全性**：環境存在 ``HF_TOKEN`` 時以 ``os.getenv("HF_TOKEN", None)``
   讀取並傳入 ``transformers.pipeline``，禁止寫死。
-- **Prompt 裁剪**：text-generation pipeline 以 ``return_full_text=True``
-  請求，回傳的 ``generated_text`` 含輸入 prompt 前綴；本驅動自動裁剪該
-  前綴，僅回傳新生成文字。
+- **Chat Template 動態套用**：pipeline 之 tokenizer 提供
+  ``chat_template`` 時，自動以 ``apply_chat_template`` 將 prompt 轉為模型
+  對話模板格式（Instruct 模型必備）；套用失敗或回傳非字串／空白結果時
+  回退原 prompt。
+- **Prompt 裁剪**：text-generation pipeline 以 ``return_full_text=False``
+  請求，預期僅回傳新生成文字；若輸出意外仍含輸入 prompt 前綴，則自動
+  進行防禦性裁剪，僅回傳新生成文字。
 - **第一層例外防禦**：``predict()`` 內部以 try...except 包覆全部推論
   路徑（權重載入失敗、OOM、輸出結構異常等），一律回傳
   ``"ERROR: HuggingFace Inference Failed - <error_message>"`` 哨兵字串，
@@ -151,28 +155,59 @@ class HuggingFacePipelineInterface(BaseModelInterface):
             )
             return f"ERROR: HuggingFace Inference Failed - {exc}"
 
-    def _generate(self, prompt: str) -> str:
-        """呼叫 pipeline 並回傳已裁剪 prompt 前綴之生成文字。
+    def _format_prompt(self, prompt: str) -> str:
+        """若 tokenizer 具備 chat_template 則動態套用對話模板，否則維持原樣。
 
         Args:
             prompt: 提示文字。
 
         Returns:
-            新生成文字；輸出紀錄為空時回傳空字串；輸出未以 prompt 起頭
-            （如 chat 模板差異）時回傳去除首尾空白之完整文字（記錄警告）。
-
-        Raises:
-            ValueError: 當輸出結構與預期 ``[{"generated_text": str}]``
-                不符時（由 :meth:`predict` 轉為哨兵字串）。
+            套用 chat template 後的 prompt；當 tokenizer 無
+            ``chat_template``、``apply_chat_template`` 拋出例外、或結果
+            非有效非空字串時，回傳原始 prompt（並記錄警告）。
         """
+        tokenizer = getattr(self._pipeline, "tokenizer", None)
+        if tokenizer is not None and getattr(tokenizer, "chat_template", None):
+            messages = [{"role": "user", "content": prompt}]
+            try:
+                formatted: object = tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+            except Exception:
+                LOGGER.warning(
+                    "Chat template application failed for model %s; "
+                    "falling back to the raw prompt.",
+                    self._model_id,
+                )
+                return prompt
+            if not isinstance(formatted, str) or not formatted.strip():
+                LOGGER.warning(
+                    "Chat template produced an unusable result for model %s; "
+                    "falling back to the raw prompt.",
+                    self._model_id,
+                )
+                return prompt
+            return formatted
+        return prompt
+
+    def _generate(self, prompt: str) -> str:
+        # 1. 轉為對應模型的 Chat Template（Instruct 模型必備）
+        formatted_prompt = self._format_prompt(prompt)
+
         generation_kwargs: Dict[str, object] = {
             "max_new_tokens": self._max_new_tokens,
-            "return_full_text": True,
+            "return_full_text": False,
+            "clean_up_tokenization_spaces": False,
         }
         if self._temperature > 0.0:
             generation_kwargs["do_sample"] = True
             generation_kwargs["temperature"] = self._temperature
-        result: object = self._pipeline(prompt, **generation_kwargs)
+        else:
+            generation_kwargs["do_sample"] = False
+
+        # 2. 傳入 formatted_prompt 推論
+        result: object = self._pipeline(formatted_prompt, **generation_kwargs)
+
         if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
             LOGGER.warning(
                 "Model %s returned an unexpected result container %s.",
@@ -194,11 +229,9 @@ class HuggingFacePipelineInterface(BaseModelInterface):
                 "Pipeline output record has no string 'generated_text' "
                 f"(got {type(text).__name__})."
             )
-        if text.startswith(prompt):
-            return text[len(prompt) :].strip()
-        LOGGER.warning(
-            "Model %s output does not start with the input prompt; "
-            "returning full text.",
-            self._model_id,
-        )
+
+        # 3. 若有模型未遵循 return_full_text=False，以 formatted_prompt 進行裁切
+        if text.startswith(formatted_prompt):
+            return text[len(formatted_prompt) :].strip()
+
         return text.strip()

@@ -752,6 +752,17 @@ def _hf_generation_result(text: str) -> List[Dict[str, str]]:
     return [{"generated_text": text}]
 
 
+def _disable_chat_template(pipeline_mock: MagicMock) -> None:
+    """模擬無 chat_template 之 pipeline（mock 中性化）。
+
+    ``MagicMock`` 化的 pipeline 會自動產生 truthy 之 ``tokenizer``／
+    ``chat_template`` 屬性，使 ``_format_prompt`` 走 chat template 路徑並
+    產生非字串之格式化 prompt；此處將 ``tokenizer`` 明確設為 ``None``，
+    使推論採用原始 prompt 字串。
+    """
+    pipeline_mock.tokenizer = None
+
+
 class TestHuggingFacePipeline:
     """HuggingFacePipelineInterface：全離線（mock transformers.pipeline）。"""
 
@@ -808,23 +819,31 @@ class TestHuggingFacePipeline:
                 )
 
     def test_predict_strips_prompt_prefix(self) -> None:
+        # 防禦性回歸鎖定：模型未遵循 return_full_text=False（輸出仍含輸入
+        # prompt 前綴）時，驅動仍自動裁剪前綴。
         prompt = "Question: 1+1=?\nA. 1\nB. 2\nAnswer:"
         with patch("src.models.huggingface.pipeline"):
             iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            _disable_chat_template(iface._pipeline)
             iface._pipeline.return_value = _hf_generation_result(
                 f"{prompt}\nThe correct answer is (B)"
             )
         assert iface.predict(prompt) == "The correct answer is (B)"
 
-    def test_predict_requests_full_text_and_max_tokens(self) -> None:
+    def test_predict_requests_generation_only_kwargs(self) -> None:
         with patch("src.models.huggingface.pipeline"):
             iface = HuggingFacePipelineInterface(
                 model_name="q", model_id="m", max_new_tokens=64
             )
+            _disable_chat_template(iface._pipeline)
             iface._pipeline.return_value = _hf_generation_result("p ok")
             iface.predict("p")
         iface._pipeline.assert_called_once_with(
-            "p", max_new_tokens=64, return_full_text=True
+            "p",
+            max_new_tokens=64,
+            return_full_text=False,
+            clean_up_tokenization_spaces=False,
+            do_sample=False,
         )
 
     def test_predict_passes_sampling_kwargs_when_temperature_positive(self) -> None:
@@ -832,6 +851,7 @@ class TestHuggingFacePipeline:
             iface = HuggingFacePipelineInterface(
                 model_name="q", model_id="m", temperature=0.7
             )
+            _disable_chat_template(iface._pipeline)
             iface._pipeline.return_value = _hf_generation_result("p X")
             iface.predict("p")
         kwargs = iface._pipeline.call_args.kwargs
@@ -841,10 +861,61 @@ class TestHuggingFacePipeline:
     def test_predict_returns_full_text_when_prefix_mismatch(self) -> None:
         with patch("src.models.huggingface.pipeline"):
             iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            _disable_chat_template(iface._pipeline)
             iface._pipeline.return_value = _hf_generation_result(
                 "Sure! The correct answer is (C)"
             )
         assert iface.predict("different prompt") == "Sure! The correct answer is (C)"
+
+    def test_predict_applies_chat_template_when_available(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            formatted = "<|user|>p<|assistant|>"
+            iface._pipeline.tokenizer.chat_template = "sentinel-template"
+            iface._pipeline.tokenizer.apply_chat_template.return_value = formatted
+            iface._pipeline.return_value = _hf_generation_result(
+                "The correct answer is (A)"
+            )
+            out = iface.predict("p")
+        assert out == "The correct answer is (A)"
+        # pipeline 必以格式化後的 prompt 呼叫。
+        assert iface._pipeline.call_args.args[0] == formatted
+        # apply_chat_template 契約：單則 user 訊息、回傳未 tokenized 文字、
+        # 附加生成提示。
+        template_args = iface._pipeline.tokenizer.apply_chat_template.call_args
+        assert template_args.args[0] == [{"role": "user", "content": "p"}]
+        assert template_args.kwargs == {
+            "tokenize": False,
+            "add_generation_prompt": True,
+        }
+
+    def test_predict_falls_back_to_raw_prompt_when_chat_template_fails(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.tokenizer.chat_template = "sentinel-template"
+            iface._pipeline.tokenizer.apply_chat_template.side_effect = RuntimeError(
+                "broken template"
+            )
+            iface._pipeline.return_value = _hf_generation_result(
+                "The correct answer is (D)"
+            )
+            out = iface.predict("p")
+        assert out == "The correct answer is (D)"
+        # 模板套用失敗時回退原始 prompt。
+        assert iface._pipeline.call_args.args[0] == "p"
+
+    def test_predict_falls_back_to_raw_prompt_on_non_str_template_result(self) -> None:
+        with patch("src.models.huggingface.pipeline"):
+            iface = HuggingFacePipelineInterface(model_name="q", model_id="m")
+            iface._pipeline.tokenizer.chat_template = "sentinel-template"
+            iface._pipeline.tokenizer.apply_chat_template.return_value = 12345
+            iface._pipeline.return_value = _hf_generation_result(
+                "The correct answer is (B)"
+            )
+            out = iface.predict("p")
+        assert out == "The correct answer is (B)"
+        # 模板結果非有效字串時回退原始 prompt。
+        assert iface._pipeline.call_args.args[0] == "p"
 
     def test_predict_empty_result_returns_empty_string(self) -> None:
         with patch("src.models.huggingface.pipeline"):
