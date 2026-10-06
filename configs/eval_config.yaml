@@ -175,12 +175,12 @@ evaluation:
   # 僅適用於雲端 API 模型（type: gemini），可並行發出請求以提升吞吐。
   # 本機 PyTorch 模型（type: huggingface）應循序執行（Sequential），
   # 以防止顯存（VRAM）或記憶體（RAM）耗盡（OOM）；請勿對本機推論套用此平行度。
-  max_workers: 4
+  max_workers: 1
   # request_delay：兩筆連續單題推論請求之間的休眠秒數（雲端 API 限流控制，
   # 由 src/runner.py 之 BenchmarkRunner 於逐題推論間套用；最後一題之後不休眠）。
   # 0.0 表示不延遲；本機 Hugging Face 模型可維持 0.0，雲端模型可設小正數
   # 以避免 429 rate limit。
-  request_delay: 3.0
+  request_delay: 4.5
   # answer_regex：第一層（Strict）嚴格答案擷取正則（忽略大小寫、括號可選、字邊界守衛）。
   # 僅對準 Prompt 標準格式 "The correct answer is (X)"；\b 邊界守衛可避免誤擷取詞內嵌字母
   # （修正前 "The answer is B" 會誤擷取 "answer" 的 a、"I don't know" 會誤擷取 "don't" 的 d）。

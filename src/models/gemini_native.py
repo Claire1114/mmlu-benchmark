@@ -45,6 +45,7 @@ class GeminiNativeInterface(BaseModelInterface):
         self.max_retries = max(0, max_retries)
         self.backoff_factor = backoff_factor
 
+        clean_model_id = self.model_id.removeprefix("models/").strip()
         # 原生 generateContent 端點
         self.endpoint = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
@@ -54,7 +55,6 @@ class GeminiNativeInterface(BaseModelInterface):
     def _call_api(self, prompt: str) -> str:
         headers = {
             "Content-Type": "application/json",
-            "x-goog-api-key": self.api_key,
         }
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -68,9 +68,14 @@ class GeminiNativeInterface(BaseModelInterface):
         with httpx.Client(timeout=self.timeout) as client:
             resp = client.post(self.endpoint, headers=headers, json=payload)
 
-        # 429 或 5xx 丟出例外以觸發 tenacity 重試
+        # 429 或 5xx 拋出例外以觸發 tenacity 重試
         if resp.status_code in (429, 500, 502, 503, 504):
-            resp.raise_for_status()
+            # 自行拋出自訂或乾淨的狀態錯誤，避免 resp.raise_for_status() 將包含 key 的 URL 帶入訊息
+            raise httpx.HTTPStatusError(
+                f"Status {resp.status_code}: Rate limit or server error",
+                request=resp.request,
+                response=resp,
+            )
 
         if resp.status_code != 200:
             return f"{ERROR_PREFIX}HTTP {resp.status_code} - {resp.text}"
@@ -89,7 +94,7 @@ class GeminiNativeInterface(BaseModelInterface):
         @retry(
             reraise=True,
             stop=stop_after_attempt(self.max_retries + 1),
-            wait=wait_exponential(multiplier=self.backoff_factor, min=1),
+            wait=wait_exponential(multiplier=self.backoff_factor, min=10, max=60),
             retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError)),
         )
         def _execute() -> str:
@@ -98,5 +103,7 @@ class GeminiNativeInterface(BaseModelInterface):
         try:
             return _execute()
         except Exception as exc:
-            LOGGER.error("Gemini inference failed after retries: %s", exc)
-            return f"{ERROR_PREFIX}{type(exc).__name__} - {exc}"
+            # 將例外字串中的 API Key 遮蔽成 ***，確保 log 絕對安全
+            safe_msg = str(exc).replace(self.api_key, "***")
+            LOGGER.error("Gemini inference failed after retries: %s", safe_msg)
+            return f"{ERROR_PREFIX}{type(exc).__name__} - {safe_msg}"
