@@ -68,7 +68,9 @@ class MMLUDatasetLoader:
         _prompt_template: 已驗證的 Prompt 範本字串。
     """
 
-    def __init__(self, config_path: str = "configs/eval_config.yaml") -> None:
+    def __init__(
+        self, config_path: str = "configs/eval_config.yaml", num_shots: Optional[int] = None
+    ) -> None:
         """載入 YAML 設定檔並初始化內部快取。
 
         同時解析並驗證：``dataset.categories`` 多子集結構、``dataset.active_mode``
@@ -94,14 +96,21 @@ class MMLUDatasetLoader:
         self._seed: int = self._resolve_seed()
         self._prompt_template: str = self._resolve_prompt_template(dataset_cfg)
         self._subjects: List[Dict[str, str]] = self._parse_subjects(dataset_cfg)
+        # ★ num_shots: priority CLI > YAML config > default 0
+        self._num_shots: int = (
+            num_shots
+            if num_shots is not None
+            else self.config.get("dataset", {}).get("num_shots", 0)
+        )
         self._active_mode: str = self._validate_active_mode()
         LOGGER.info(
-            "MMLUDatasetLoader ready: dataset=%s split=%s active_mode=%s subjects=%s seed=%s",
+            "MMLUDatasetLoader ready: dataset=%s split=%s active_mode=%s subjects=%s seed=%s num_shots=%s",
             self._dataset_name,
             self._split,
             self._active_mode,
             [entry["subject"] for entry in self._subjects],
             self._seed,
+            self._num_shots,
         )
 
     def load_data(
@@ -214,19 +223,53 @@ class MMLUDatasetLoader:
     def format_prompt(self, item: Mapping[str, Any]) -> str:
         """將單一題目組裝為結構化多選一 Prompt。
 
+        支援 Zero-Shot (num_shots=0) 與 Few-Shot (num_shots>0) 兩種模式：
+        - Zero-Shot：直接使用設定檔之 prompt template，不附加範例。
+        - Few-Shot：在目標測試題目前，插入 ``num_shots`` 筆來自 ``dev`` split 的範例。
+          每個範例僅包含問題、選項與標準答案；目標題目使用完整範本（包含輸出格式指令與 Answer: 提示）。
+
         Args:
-            item: 單筆題目資料，預期可包含 ``question``、``choices``、``subject``。
+            item: 單筆題目資料，包含 ``question``、``choices``、``subject`` 等欄位。
 
         Returns:
-            符合評測範本的 Prompt 字串。
-
-        Raises:
-            ValueError: 當選項無法安全擷取為恰好 4 個非 None 字串時。
+            符合評測規範之 Prompt 字串。
         """
         subject: str = str(item.get("subject") or "unknown")
         question: str = str(item.get("question") or "")
         choice_a, choice_b, choice_c, choice_d = self._extract_choices(item)
-        return self._prompt_template.format(
+
+        # Zero-Shot 模式：直接套用標準範本
+        if self._num_shots == 0:
+            return self._prompt_template.format(
+                subject=subject,
+                question=question,
+                choice_A=choice_a,
+                choice_B=choice_b,
+                choice_C=choice_c,
+                choice_D=choice_d,
+            )
+
+        # Few-Shot 模式：自 dev split 載入範例
+        exemplars: List[Dict[str, Any]] = self._load_dev_exemplars(subject, self._num_shots)
+        parts: List[str] = []
+
+        # 1. 組裝 Few-Shot 範例：乾淨的「問題 + 選項 + 標準答案」，不套用含格式指令的 template
+        for ex in exemplars:
+            ex_q: str = str(ex.get("question") or "")
+            ex_a, ex_b, ex_c, ex_d = self._extract_choices(ex)
+            ex_ans: str = str(ex.get("answer_letter") or "").strip()
+            
+            parts.append(
+                f"Question: {ex_q}\n"
+                f"A. {ex_a}\n"
+                f"B. {ex_b}\n"
+                f"C. {ex_c}\n"
+                f"D. {ex_d}\n"
+                f"Answer: The correct answer is ({ex_ans})"
+            )
+
+        # 2. 組裝目標題目：套用 self._prompt_template（內部已自帶開頭引言與結尾格式指令）
+        target_part = self._prompt_template.format(
             subject=subject,
             question=question,
             choice_A=choice_a,
@@ -234,6 +277,74 @@ class MMLUDatasetLoader:
             choice_C=choice_c,
             choice_D=choice_d,
         )
+        parts.append(target_part)
+
+        # 3. 雙換行合併所有段落
+        return "\n\n".join(parts)
+
+
+    def _load_dev_exemplars(self, subject: str, k: int) -> List[Dict[str, Any]]:
+        """從 ``dev`` split 載入 ``k`` 筆 Few-Shot 範例。
+
+        關鍵設計：
+        - 來源必須是 ``dev`` split，而非 ``test`` split，以防止資料外洩。
+        - 使用 SHA-512 seed（``project.seed :: subject``）確定性抽取前 ``k`` 題。
+        - 範例包含完整欄位（question, choices, answer_letter），含標準答案。
+        - 若 dev 題目數量 < ``k``，則回傳全部可用題目而不報錯。
+
+        Args:
+            subject: MMLU 科目名稱。
+            k: 要抽取的範例筆數。
+
+        Returns:
+            長度為 ``min(k, available_dev_count)`` 的範例清單。
+        """
+        from src.dataset_loader import load_dataset  # local import to avoid circular
+
+        # 決定使用的 split 為 dev
+        dev_split: str = "dev"
+
+        try:
+            raw_dataset = load_dataset(
+                self._dataset_name,
+                subject,
+                **self._load_kwargs(dev_split),
+            )
+        except Exception as exc:
+            LOGGER.warning(
+                "Failed to load dev dataset for subject=%s: %s", subject, exc
+            )
+            return []
+
+        # 正規化資料列
+        records: List[Dict[str, Any]] = self._coerce_records(raw_dataset, split=dev_split)
+        normalized: List[Dict[str, Any]] = []
+        for row in records:
+            item: Optional[Dict[str, Any]] = self._normalize_row(
+                row=row, fallback_subject=subject, index=0
+            )
+            if item is not None:
+                normalized.append(item)
+
+        if not normalized:
+            LOGGER.warning("No dev records found for subject=%s", subject)
+            return []
+
+        # 使用由 (seed, subject) 派生的種子確定性抽取前 k 題
+        rng = random.Random(f"{self._seed}::{subject}")
+        # 取得所有題目的索引，並隨機抽取 k 筆（或全部如果不足）
+        all_indices: List[int] = list(range(len(normalized)))
+        chosen_count: int = min(k, len(all_indices))
+        chosen_indices: List[int] = sorted(rng.sample(all_indices, chosen_count))
+        exemplars: List[Dict[str, Any]] = [normalized[i] for i in chosen_indices]
+
+        LOGGER.debug(
+            "Loaded %d Few-Shot exemplars from dev split for subject=%s (out of %d available)",
+            len(exemplars),
+            subject,
+            len(normalized),
+        )
+        return exemplars
 
     def get_samples(self) -> List[Dict[str, Any]]:
         """回傳全部設定科目的可供評測樣本清單。

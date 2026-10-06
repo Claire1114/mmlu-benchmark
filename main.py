@@ -118,9 +118,10 @@ class CliOptions:
     config_path: str
     mode: str
     model_names: Optional[Tuple[str, ...]]
-    delay: Optional[float]
-    limit: Optional[int]
-    output_dir: str
+    delay: Optional[float] = None
+    shots: Optional[int] = None
+    limit: Optional[int] = None
+    output_dir: str = DEFAULT_OUTPUT_DIR
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> CliOptions:
         help="全域樣本上限（正整數；依科目順序截取）。",
     )
     parser.add_argument(
+        "--shots",
+        type=int,
+        default=None,
+        help="每科目 Few-Shot 範例數量。0 為 Zero-Shot，>0 為 Few-Shot。預設從 config 讀取 num_shots。",
+    )
+    parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help="結果產出根目錄（預設 results；實際落點為 <output-dir>/{mode}/）。",
@@ -221,6 +228,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> CliOptions:
         mode=str(args.mode),
         model_names=model_names,
         delay=args.delay,
+        shots=args.shots,
         limit=args.limit,
         output_dir=str(args.output_dir),
     )
@@ -929,7 +937,7 @@ def run_pipeline(options: CliOptions) -> int:
     )
 
     try:
-        loader = MMLUDatasetLoader(options.config_path)
+        loader = MMLUDatasetLoader(options.config_path, num_shots=options.shots)
         subject_entries = loader.iter_subjects()
         samples = _build_samples(
             loader, plan.sample_size, subject_entries, options.limit
@@ -987,6 +995,8 @@ def run_pipeline(options: CliOptions) -> int:
         "mode": options.mode,
         "mode_purpose": plan.mode_purpose,
         "sample_size_per_subject": plan.sample_size,
+        "num_shots": getattr(loader, "_num_shots", 0),
+        "shots_source": "cli" if options.shots is not None else "config",
         "total_samples": len(samples),
         "subjects": [
             {

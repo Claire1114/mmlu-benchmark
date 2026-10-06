@@ -60,7 +60,11 @@ dataset:
       sample_size_per_subject: 30
       # purpose：本模式的評測目標說明，供日誌與報告引用。
       purpose: "具備足夠統計樣本數以消除單題偶然誤差，並在雷達圖／柱狀圖呈現 0.5B、1.7B 與 Gemini 的能力梯度差距。"
-  # categories：四大知識領域及其代表性 MMLU 子集（Subjects）與考察重點。
+  # num_shots：每科目 Few-Shot 範例數量。0 為 Zero-Shot，>0 為 Few-Shot。
+  # 會被 CLI --shots 參數覆寫；若 CLI 未指定，則使用本值。
+  num_shots: 0
+
+# categories：四大知識領域及其代表性 MMLU 子集（Subjects）與考察重點。
   categories:
     # STEM：理工科技領域，考察程式邏輯、演算法與多步驟數學推理。
     STEM:
@@ -146,7 +150,7 @@ models:
       max_tokens: 128
       # top_p：核取樣機率門檻。
       top_p: 1.0
-  # gemini-3.1-flash-lite：雲端 Gemini 模型，作為高能力上界對照。
+  # gemini-3.1-flash-lite/gemini-3.5-flash-lite：雲端 Gemini 模型，作為高能力上界對照。
   - name: "gemini-3.1-flash-lite"
     # type：驅動類型；gemini 表示透過 Google Gemini API 遠端推論。
     type: "gemini"
