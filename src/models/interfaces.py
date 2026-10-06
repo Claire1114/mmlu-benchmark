@@ -32,6 +32,8 @@ from src.models.openai_compatible import (
     DEFAULT_TOP_P,
     OpenAICompatibleInterface,
 )
+from src.models.gemini_native import GeminiNativeInterface
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,13 +45,14 @@ SUPPORTED_TYPES: frozenset[str] = frozenset(
         "groq",
         "ollama",
         "openrouter",
+        "gemini", 
         "huggingface",
         "hf_pipeline",
     }
 )
 
 #: 排程於 Step 4 後續階段的模型類型（Gemini 雲端驅動）。
-_LATER_PHASE_TYPES: frozenset[str] = frozenset({"gemini"})
+_LATER_PHASE_TYPES: frozenset[str] = frozenset()
 
 
 @runtime_checkable
@@ -357,11 +360,48 @@ def build_model_interface(
     retry: Mapping[str, object] = _as_mapping_block(
         evaluation_cfg.get("retry"), "evaluation.retry"
     )
+    if model_type == "gemini":
+        return GeminiNativeInterface(
+            model_name=name,
+            model_id=model_id,
+            api_key_env_var=_optional_str(model_cfg, "api_key_env_var"),
+            max_retries=_coerce_int(
+                retry.get("max_retries"),
+                DEFAULT_MAX_RETRIES,
+                "evaluation.retry.max_retries",
+            ),
+            backoff_factor=_coerce_float(
+                retry.get("backoff_factor"),
+                DEFAULT_BACKOFF_FACTOR,
+                "evaluation.retry.backoff_factor",
+            ),
+            timeout_seconds=_coerce_float(
+                retry.get("timeout_seconds"),
+                DEFAULT_TIMEOUT_SECONDS,
+                "evaluation.retry.timeout_seconds",
+            ),
+            temperature=_coerce_float(
+                generation.get("temperature"),
+                DEFAULT_TEMPERATURE,
+                "models[].generation.temperature",
+            ),
+            max_tokens=_coerce_int(
+                generation.get("max_tokens"),
+                DEFAULT_MAX_TOKENS,
+                "models[].generation.max_tokens",
+            ),
+            top_p=_coerce_float(
+                generation.get("top_p"),
+                DEFAULT_TOP_P,
+                "models[].generation.top_p",
+            ),
+        )
+
     return OpenAICompatibleInterface(
         model_name=name,
         model_id=model_id,
         provider=model_type,
-        base_url=_optional_str(model_cfg, "base_url"),
+        base_url=_optional_str(model_cfg, "base_url"),            
         api_key_env_var=_optional_str(model_cfg, "api_key_env_var"),
         max_retries=_coerce_int(
             retry.get("max_retries"),

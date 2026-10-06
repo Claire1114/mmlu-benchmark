@@ -399,8 +399,11 @@ class TestMetricsComputation:
         samples = [_sample("q1", "A"), _sample("q2", "B")]
         predictions = [_prediction("q1", "The correct answer is (A)", 2.0)]
         result = Evaluator().evaluate(samples, predictions)
-        # q2 缺 prediction → latency 0.0 → 平均 (2.0 + 0.0) / 2 = 1.0
-        assert result.average_latency == 1.0
+        # q2 缺 prediction → 不計入平均延遲，僅 q1 的 2.0s 計入平均
+        # 期望 average_latency == 2.0 (only the 1 prediction's latency), NOT 1.0
+        assert result.average_latency == 2.0
+        # missing_predictions 應為 1（q2 無預測）
+        assert result.missing_predictions == 1
 
     def test_invalid_target_letter_treated_invalid(self) -> None:
         samples = [_sample("q1", "E"), _sample("q2", "A")]

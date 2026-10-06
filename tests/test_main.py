@@ -1318,6 +1318,7 @@ class TestOutputFormats:
             "valid_samples",
             "correct_samples",
             "invalid_samples",
+            "missing_predictions",
             "overall_accuracy",
             "valid_accuracy",
             "invalid_parsing_rate",

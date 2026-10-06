@@ -28,6 +28,8 @@ from src.models import (
     SUPPORTED_TYPES,
     build_model_interface,
 )
+from src.models.gemini_native import GeminiNativeInterface
+
 
 _CHAT_URL: str = "http://api.test.invalid/v1/chat/completions"
 
@@ -697,13 +699,17 @@ class TestBuildModelInterface:
             with pytest.raises(ValueError, match="name"):
                 build_model_interface({"type": "groq", "model_id": "m"})
 
-    def test_later_phase_types_raise_not_implemented(self) -> None:
-        # huggingface 已於本階段實作，移出待實作清單；gemini 仍排程後續。
-        for later_type in ("gemini",):
-            with pytest.raises(NotImplementedError):
-                build_model_interface(
-                    {"type": later_type, "name": "x", "model_id": "m"}
-                )
+    def test_gemini_type_builds_successfully(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("GEMINI_API_KEY", "dummy-gemini-key")
+        iface = build_model_interface(
+            {"type": "gemini", "name": "gemini-test", "model_id": "gemini-1.5-flash"}
+        )
+        assert isinstance(iface, GeminiNativeInterface)
+        assert iface.model_name == "gemini-test"
+        assert "generativelanguage.googleapis.com" in iface.endpoint
+
 
     def test_invalid_retry_values_fall_back_to_defaults(self) -> None:
         with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
@@ -738,6 +744,7 @@ class TestBuildModelInterface:
             "groq",
             "ollama",
             "openrouter",
+            "gemini",
             "huggingface",
             "hf_pipeline",
         }

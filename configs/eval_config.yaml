@@ -146,16 +146,14 @@ models:
       max_tokens: 128
       # top_p：核取樣機率門檻。
       top_p: 1.0
-  # gemini-1.5-flash：雲端 Gemini 模型，作為高能力上界對照。
-  - name: "gemini-1.5-flash"
+  # gemini-3.1-flash-lite：雲端 Gemini 模型，作為高能力上界對照。
+  - name: "gemini-3.1-flash-lite"
     # type：驅動類型；gemini 表示透過 Google Gemini API 遠端推論。
     type: "gemini"
     # model_id：Gemini API 模型識別碼。
-    model_id: "gemini-1.5-flash"
+    model_id: "gemini-3.1-flash-lite"
     # api_key_env_var：讀取 API 金鑰的環境變數名稱；嚴禁在設定檔硬編碼金鑰。
     api_key_env_var: "GEMINI_API_KEY"
-    # max_retries：雲端呼叫失敗時的最大重試次數（含瞬時網路／配額錯誤）。
-    max_retries: 5
     # generation：本模型推論時的解碼參數。
     generation:
       # temperature：取樣溫度；0.0 為近乎貪婪解碼。
@@ -178,7 +176,7 @@ evaluation:
   # 由 src/runner.py 之 BenchmarkRunner 於逐題推論間套用；最後一題之後不休眠）。
   # 0.0 表示不延遲；本機 Hugging Face 模型可維持 0.0，雲端模型可設小正數
   # 以避免 429 rate limit。
-  request_delay: 0.0
+  request_delay: 3.0
   # answer_regex：第一層（Strict）嚴格答案擷取正則（忽略大小寫、括號可選、字邊界守衛）。
   # 僅對準 Prompt 標準格式 "The correct answer is (X)"；\b 邊界守衛可避免誤擷取詞內嵌字母
   # （修正前 "The answer is B" 會誤擷取 "answer" 的 a、"I don't know" 會誤擷取 "don't" 的 d）。
@@ -188,7 +186,7 @@ evaluation:
   # retry：推論失敗時的防禦性重試與指數退避設定。
   retry:
     # max_retries：單一樣本推論失敗後的最大重試次數。
-    max_retries: 3
+    max_retries: 5
     # backoff_factor：指數退避係數；第 n 次重試等待時間約為 backoff_factor^(n-1) 秒量級。
     backoff_factor: 2.0
     # timeout_seconds：單次推論請求逾時秒數，逾時視為可重試錯誤。

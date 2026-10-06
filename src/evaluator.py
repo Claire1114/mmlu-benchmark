@@ -37,7 +37,15 @@ VALID_LETTERS: Tuple[str, ...] = ("A", "B", "C", "D")
 DEFAULT_STRICT_ANSWER_REGEX: str = r"(?i)\bthe correct answer is\s*\(?\b([A-D])\b\)?"
 
 #: Tier 2 fallback 範式：任一獨立選項字母；採「最後一次匹配」語意。
+#: 作為增強回落的最終後備（不帶錨點時使用），避免 quotidian 詞彙如 Bye!/Do 導致誤判。
 FALLBACK_LETTER_REGEX: re.Pattern[str] = re.compile(r"\b([A-D])\b", re.IGNORECASE)
+
+#: Tier 2 強化回落正則——弱宣告錨點。
+#    匹配：answer/choice/option/選/答案 之後接選項字母（=、空格/冒號後可選括號）
+#    大小寫不敏感的錨點關鍵字，僅擷取 [A-D]，若完全失配則為空（由 extract_answer 迴歸 None）。
+ENHANCED_FALLBACK_LETTER_REGEX: re.Pattern[str] = re.compile(
+    r"(?i:\b(?:answer|choice|option|選|答案)\b)[\s:=]*\(?([A-D])\)?",
+)
 
 
 def safe_mean(values: Sequence[float]) -> float:
@@ -313,6 +321,7 @@ class EvaluationResult:
     average_latency: float
     category_scores: Tuple[CategoryScore, ...]
     subject_scores: Tuple[SubjectScore, ...]
+    missing_predictions: int = 0
 
     def to_dict(self) -> Dict[str, object]:
         """轉換為 JSON 可序列化的報告字典。
@@ -336,6 +345,7 @@ class EvaluationResult:
             "option_recall": dict(self.option_recall),
             "recall_std": self.recall_std,
             "average_latency_seconds": self.average_latency,
+            "missing_predictions": self.missing_predictions,
             "category_scores": {
                 score.category: {
                     "total": score.total,
@@ -463,9 +473,19 @@ class Evaluator:
             )
             if strict_match is not None:
                 return strict_match.group(1).upper()
-            fallback_matches: List[str] = FALLBACK_LETTER_REGEX.findall(raw_output)
-            if fallback_matches:
-                return fallback_matches[-1].upper()
+            # Tier 2 enhanced: 弱宣告錨點（answer/choice/option/選/答案）
+            # 只在文字確實包含該類關鍵字時才匹配，防止 "Bye!"、"Do you agree?" 等誤判
+            has_anchor: bool = bool(
+                re.search(r"(?i)\b(?:answer|choice|option|選|答案)\b", raw_output)
+            )
+            if has_anchor:
+                fallback_matches: List[str] = ENHANCED_FALLBACK_LETTER_REGEX.findall(raw_output)
+                if fallback_matches:
+                    return fallback_matches[-1].upper()
+            # Tier 2 plain: 獨立選項字母（作為無錨點文字的最後後備）
+            plain_matches: List[str] = FALLBACK_LETTER_REGEX.findall(raw_output)
+            if plain_matches:
+                return plain_matches[-1].upper()
         except Exception as exc:  # Tier 3 Safe Guard：任何非預期例外
             LOGGER.warning(
                 "Answer extraction raised unexpectedly; marked INVALID: %s", exc
@@ -592,11 +612,9 @@ class Evaluator:
             if prediction is None:
                 missing_count += 1
                 predicted = None
-                latency: float = 0.0
             else:
                 predicted = prediction.predicted
-                latency = prediction.latency
-            latencies.append(latency)
+                latencies.append(prediction.latency)
             pairs.append((target, predicted))
 
             is_correct: bool = (
@@ -676,6 +694,7 @@ class Evaluator:
             option_recall=option_recall,
             recall_std=compute_recall_std(option_recall),
             average_latency=safe_mean(latencies),
+            missing_predictions=missing_count,
             category_scores=tuple(category_scores),
             subject_scores=tuple(subject_scores),
         )
