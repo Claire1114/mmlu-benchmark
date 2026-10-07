@@ -140,7 +140,7 @@ mmlu-benchmark/
 | `tests/` | Offline unit and integration test suites with mock interfaces |
 | `results/` | Output directory for raw model predictions and aggregated metric JSONs |
 | `logs/` | Runtime logs, execution traces, and development audits |
-| `docs/` | Technical specifications and implementation documentation |
+| `docs/` | Technical documentation and step-by-step pipeline implementation logs (step1.md through step8_*.md), anchored by AI_REVIEW_AND_REFACTOR_LOG.md as the unified master summary of the iterative development and refactoring process |
 | `report/` | Deliverables directory containing the comprehensive technical report (technical_report.pdf) and the presentation slides (presentation.pdf)|
 
 ---
