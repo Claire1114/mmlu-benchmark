@@ -55,6 +55,7 @@ The observed performance gradient demonstrates that the pipeline can distinguish
 
 ```text
 mmlu-benchmark/
+├── .clinerules
 ├── .cursorrules
 ├── .env
 ├── .gitignore
@@ -64,7 +65,9 @@ mmlu-benchmark/
 │
 ├── configs/
 │   └── eval_config.yaml
-│
+├── scripts/
+│   ├── run_smoke_test.sh
+│   └── run_demo.sh
 ├── src/
 │   ├── dataset_loader.py
 │   ├── evaluator.py
@@ -97,8 +100,10 @@ mmlu-benchmark/
 
 | Component | Description |
 | :--- | :--- |
+| `.clinerules` | Engineering standards and automated development guidelines for Cline AI |
 | `.cursorrules` | AI agent engineering rules and defensive development guidelines |
 | `configs/eval_config.yaml` | Centralized evaluation settings, subject mappings, and model registry |
+| `scripts/` | Shell automation scripts for smoke testing and multi-model benchmark runs |
 | `src/dataset_loader.py` | MMLU dataset ingestion, schema validation, and deterministic seeded sampling |
 | `src/evaluator.py` | Multi-tier regex answer parsing and hierarchical metric computation |
 | `src/runner.py` | Evaluation orchestration, request throttling, error isolation, and record flushing |
@@ -156,63 +161,66 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 ## 5. Execution Guide
 
-The evaluation pipeline is executed through `main.py`.
+You can run the benchmark using either the automated helper scripts under `scripts/` (recommended) or direct CLI commands via `main.py`.
 
-### 5.1 Smoke Test
+### 5.1 Preparation: Make Scripts Executable
 
-Run a lightweight end-to-end verification using 10 samples per subject:
-
-```bash
-python main.py \
-  --mode smoke_test \
-  --models gemini-3.1-flash-lite \
-  --shots 5
-```
-
-This mode is intended to verify:
-
-- Dataset loading
-- Prompt construction
-- Model inference
-- Answer extraction
-- Metric calculation
-- Result persistence
-- Error handling
-
-### 5.2 Demo Benchmark
-
-Run the standard 240-question evaluation across all configured models:
+Grant execution permissions before running the shell scripts:
 
 ```bash
-python main.py \
-  --mode demo \
-  --models qwen2.5-0.5b smollm2-1.7b gemini-3.1-flash-lite \
-  --shots 5
+chmod +x scripts/*.sh
 ```
 
-Configuration:
+---
 
-- 8 subjects × 30 questions = 240 questions
+### 5.2 Smoke Test
 
-### 5.3 Key CLI Options
+Validates environment variables, tests the API connection, and runs a quick end-to-end check using a single lightweight model.
+
+- **Using Helper Script (Recommended)**:
+  ```bash
+  ./scripts/run_smoke_test.sh
+  ```
+- **Using Direct CLI**:
+  ```bash
+  python main.py \
+    --mode demo \
+    --models smollm2-1.7b \
+    --shots 0 \
+    --delay 1.0
+  ```
+
+---
+
+### 5.3 Demo Benchmark
+
+Automatically loads `.env`, verifies Gemini API health, and launches the standard evaluation across all 3 models (`qwen2.5-0.5b`, `smollm2-1.7b`, `gemini-3.1-flash-lite`).
+
+- **Using Helper Script (Recommended)**:
+  ```bash
+  ./scripts/run_demo.sh
+  ```
+- **Using Direct CLI**:
+  ```bash
+  python main.py \
+    --mode demo \
+    --models qwen2.5-0.5b smollm2-1.7b gemini-3.1-flash-lite \
+    --shots 0 \
+    --delay 4.5
+  ```
+
+---
+
+### 5.4 Key CLI Options
 
 | Option | Description |
 | :--- | :--- |
 | `--mode` | Evaluation mode: `smoke_test` or `demo` |
-| `--models` | Target model(s) to evaluate |
-| `--shots` | Number of few-shot examples, e.g. `0` for zero-shot or `5` for 5-shot |
-| `--delay` | Delay between API requests to reduce rate-limit risk |
-| `--limit` | Optional limit for debugging a smaller number of test samples |
+| `--models` | Target model(s) to evaluate (space-separated) |
+| `--shots` | Number of few-shot examples (e.g. `0` for zero-shot or `5` for 5-shot) |
+| `--delay` | Request cooldown in seconds to prevent rate-limit errors |
+| `--limit` | Optional limit for debugging a smaller sample subset |
 
-Example:
-
-```bash
-python main.py \
-  --mode smoke_test \
-  --models gemini-3.1-flash-lite \
-  --shots 0 \
-  --limit 5
-```
 
 ---
 

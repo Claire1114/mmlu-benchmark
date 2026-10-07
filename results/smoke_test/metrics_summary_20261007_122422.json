@@ -1,0 +1,199 @@
+{
+  "metadata": {
+    "project": "pegatron-mmlu-benchmark",
+    "config_version": "1.0.0",
+    "config_path": "configs/eval_config.yaml",
+    "mode": "smoke_test",
+    "mode_purpose": "驗證端到端 Pipeline 通暢性（Prompt 範本、正規化擷取 A/B/C/D、JSON 儲存與例外重試）。",
+    "sample_size_per_subject": 10,
+    "num_shots": 0,
+    "shots_source": "config",
+    "total_samples": 1,
+    "subjects": [
+      {
+        "category": "STEM",
+        "subject": "college_computer_science"
+      },
+      {
+        "category": "STEM",
+        "subject": "high_school_mathematics"
+      },
+      {
+        "category": "Humanities",
+        "subject": "philosophy"
+      },
+      {
+        "category": "Humanities",
+        "subject": "world_religions"
+      },
+      {
+        "category": "Social_Sciences",
+        "subject": "econometrics"
+      },
+      {
+        "category": "Social_Sciences",
+        "subject": "high_school_psychology"
+      },
+      {
+        "category": "Other",
+        "subject": "clinical_knowledge"
+      },
+      {
+        "category": "Other",
+        "subject": "professional_law"
+      }
+    ],
+    "request_delay": 4.5,
+    "delay_source": "config",
+    "output_dir": "results",
+    "log_file": "logs/smoke_test/pipeline_20261007_122422.log",
+    "timestamp": "20261007_122422",
+    "generated_at": "2026-10-07T12:24:46"
+  },
+  "models": [
+    {
+      "model_name": "qwen2.5-0.5b",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 3.6722580839996226,
+      "metrics": {
+        "model": "qwen2.5-0.5b",
+        "total_samples": 1,
+        "valid_samples": 1,
+        "correct_samples": 0,
+        "invalid_samples": 0,
+        "overall_accuracy": 0.0,
+        "valid_accuracy": 0.0,
+        "invalid_parsing_rate": 0.0,
+        "domain_accuracy": {
+          "STEM": 0.0
+        },
+        "domain_accuracy_mean": 0.0,
+        "subject_accuracy": {
+          "college_computer_science": 0.0
+        },
+        "option_recall": {
+          "C": 0.0
+        },
+        "recall_std": 0.0,
+        "average_latency_seconds": 1.5676179590000174,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 1,
+            "valid": 1,
+            "correct": 0,
+            "invalid": 0,
+            "accuracy": 0.0
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 1,
+            "valid": 1,
+            "correct": 0,
+            "invalid": 0,
+            "accuracy": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model_name": "smollm2-1.7b",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 5.392342541999824,
+      "metrics": {
+        "model": "smollm2-1.7b",
+        "total_samples": 1,
+        "valid_samples": 1,
+        "correct_samples": 1,
+        "invalid_samples": 0,
+        "overall_accuracy": 1.0,
+        "valid_accuracy": 1.0,
+        "invalid_parsing_rate": 0.0,
+        "domain_accuracy": {
+          "STEM": 1.0
+        },
+        "domain_accuracy_mean": 1.0,
+        "subject_accuracy": {
+          "college_computer_science": 1.0
+        },
+        "option_recall": {
+          "C": 1.0
+        },
+        "recall_std": 0.0,
+        "average_latency_seconds": 1.3343318750003164,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 1,
+            "valid": 1,
+            "correct": 1,
+            "invalid": 0,
+            "accuracy": 1.0
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 1,
+            "valid": 1,
+            "correct": 1,
+            "invalid": 0,
+            "accuracy": 1.0
+          }
+        }
+      }
+    },
+    {
+      "model_name": "gemini-3.5-flash-lite",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 0.13212879100046848,
+      "metrics": {
+        "model": "gemini-3.5-flash-lite",
+        "total_samples": 1,
+        "valid_samples": 0,
+        "correct_samples": 0,
+        "invalid_samples": 1,
+        "overall_accuracy": 0.0,
+        "valid_accuracy": 0.0,
+        "invalid_parsing_rate": 1.0,
+        "domain_accuracy": {
+          "STEM": 0.0
+        },
+        "domain_accuracy_mean": 0.0,
+        "subject_accuracy": {
+          "college_computer_science": 0.0
+        },
+        "option_recall": {
+          "C": 0.0
+        },
+        "recall_std": 0.0,
+        "average_latency_seconds": 0.13102512499972363,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 1,
+            "valid": 0,
+            "correct": 0,
+            "invalid": 1,
+            "accuracy": 0.0
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 1,
+            "valid": 0,
+            "correct": 0,
+            "invalid": 1,
+            "accuracy": 0.0
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,469 @@
+{
+  "metadata": {
+    "project": "pegatron-mmlu-benchmark",
+    "config_version": "1.0.0",
+    "config_path": "configs/eval_config.yaml",
+    "mode": "smoke_test",
+    "mode_purpose": "驗證端到端 Pipeline 通暢性（Prompt 範本、正規化擷取 A/B/C/D、JSON 儲存與例外重試）。",
+    "sample_size_per_subject": 10,
+    "num_shots": 0,
+    "shots_source": "config",
+    "total_samples": 80,
+    "subjects": [
+      {
+        "category": "STEM",
+        "subject": "college_computer_science"
+      },
+      {
+        "category": "STEM",
+        "subject": "high_school_mathematics"
+      },
+      {
+        "category": "Humanities",
+        "subject": "philosophy"
+      },
+      {
+        "category": "Humanities",
+        "subject": "world_religions"
+      },
+      {
+        "category": "Social_Sciences",
+        "subject": "econometrics"
+      },
+      {
+        "category": "Social_Sciences",
+        "subject": "high_school_psychology"
+      },
+      {
+        "category": "Other",
+        "subject": "clinical_knowledge"
+      },
+      {
+        "category": "Other",
+        "subject": "professional_law"
+      }
+    ],
+    "request_delay": 4.5,
+    "delay_source": "config",
+    "output_dir": "results",
+    "log_file": "logs/smoke_test/pipeline_20261007_123655.log",
+    "timestamp": "20261007_123655",
+    "generated_at": "2026-10-07T12:46:38"
+  },
+  "models": [
+    {
+      "model_name": "qwen2.5-0.5b",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 48.537473582999155,
+      "metrics": {
+        "model": "qwen2.5-0.5b",
+        "total_samples": 80,
+        "valid_samples": 76,
+        "correct_samples": 29,
+        "invalid_samples": 4,
+        "overall_accuracy": 0.3625,
+        "valid_accuracy": 0.3815789473684211,
+        "invalid_parsing_rate": 0.05,
+        "domain_accuracy": {
+          "STEM": 0.3,
+          "Humanities": 0.6,
+          "Social_Sciences": 0.25,
+          "Other": 0.3
+        },
+        "domain_accuracy_mean": 0.3625,
+        "subject_accuracy": {
+          "college_computer_science": 0.4,
+          "high_school_mathematics": 0.2,
+          "philosophy": 0.8,
+          "world_religions": 0.4,
+          "econometrics": 0.0,
+          "high_school_psychology": 0.5,
+          "clinical_knowledge": 0.4,
+          "professional_law": 0.2
+        },
+        "option_recall": {
+          "A": 0.25,
+          "B": 0.3125,
+          "C": 0.4782608695652174,
+          "D": 0.38095238095238093
+        },
+        "recall_std": 0.08470136397401908,
+        "average_latency_seconds": 0.5827632182000798,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 20,
+            "valid": 16,
+            "correct": 6,
+            "invalid": 4,
+            "accuracy": 0.3
+          },
+          "Humanities": {
+            "total": 20,
+            "valid": 20,
+            "correct": 12,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "Social_Sciences": {
+            "total": 20,
+            "valid": 20,
+            "correct": 5,
+            "invalid": 0,
+            "accuracy": 0.25
+          },
+          "Other": {
+            "total": 20,
+            "valid": 20,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.3
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 10,
+            "correct": 4,
+            "invalid": 0,
+            "accuracy": 0.4
+          },
+          "high_school_mathematics": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 6,
+            "correct": 2,
+            "invalid": 4,
+            "accuracy": 0.2
+          },
+          "philosophy": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 10,
+            "correct": 8,
+            "invalid": 0,
+            "accuracy": 0.8
+          },
+          "world_religions": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 10,
+            "correct": 4,
+            "invalid": 0,
+            "accuracy": 0.4
+          },
+          "econometrics": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 10,
+            "correct": 0,
+            "invalid": 0,
+            "accuracy": 0.0
+          },
+          "high_school_psychology": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 10,
+            "correct": 5,
+            "invalid": 0,
+            "accuracy": 0.5
+          },
+          "clinical_knowledge": {
+            "category": "Other",
+            "total": 10,
+            "valid": 10,
+            "correct": 4,
+            "invalid": 0,
+            "accuracy": 0.4
+          },
+          "professional_law": {
+            "category": "Other",
+            "total": 10,
+            "valid": 10,
+            "correct": 2,
+            "invalid": 0,
+            "accuracy": 0.2
+          }
+        }
+      }
+    },
+    {
+      "model_name": "smollm2-1.7b",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 62.40928024999994,
+      "metrics": {
+        "model": "smollm2-1.7b",
+        "total_samples": 80,
+        "valid_samples": 80,
+        "correct_samples": 39,
+        "invalid_samples": 0,
+        "overall_accuracy": 0.4875,
+        "valid_accuracy": 0.4875,
+        "invalid_parsing_rate": 0.0,
+        "domain_accuracy": {
+          "STEM": 0.5,
+          "Humanities": 0.55,
+          "Social_Sciences": 0.6,
+          "Other": 0.3
+        },
+        "domain_accuracy_mean": 0.4875,
+        "subject_accuracy": {
+          "college_computer_science": 0.4,
+          "high_school_mathematics": 0.6,
+          "philosophy": 0.5,
+          "world_religions": 0.6,
+          "econometrics": 0.6,
+          "high_school_psychology": 0.6,
+          "clinical_knowledge": 0.6,
+          "professional_law": 0.0
+        },
+        "option_recall": {
+          "A": 0.6,
+          "B": 0.5625,
+          "C": 0.6086956521739131,
+          "D": 0.19047619047619047
+        },
+        "recall_std": 0.17403930702012707,
+        "average_latency_seconds": 0.7284538562250418,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 20,
+            "valid": 20,
+            "correct": 10,
+            "invalid": 0,
+            "accuracy": 0.5
+          },
+          "Humanities": {
+            "total": 20,
+            "valid": 20,
+            "correct": 11,
+            "invalid": 0,
+            "accuracy": 0.55
+          },
+          "Social_Sciences": {
+            "total": 20,
+            "valid": 20,
+            "correct": 12,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "Other": {
+            "total": 20,
+            "valid": 20,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.3
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 10,
+            "correct": 4,
+            "invalid": 0,
+            "accuracy": 0.4
+          },
+          "high_school_mathematics": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 10,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "philosophy": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 10,
+            "correct": 5,
+            "invalid": 0,
+            "accuracy": 0.5
+          },
+          "world_religions": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 10,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "econometrics": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 10,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "high_school_psychology": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 10,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "clinical_knowledge": {
+            "category": "Other",
+            "total": 10,
+            "valid": 10,
+            "correct": 6,
+            "invalid": 0,
+            "accuracy": 0.6
+          },
+          "professional_law": {
+            "category": "Other",
+            "total": 10,
+            "valid": 10,
+            "correct": 0,
+            "invalid": 0,
+            "accuracy": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model_name": "gemini-3.5-flash-lite",
+      "status": "completed",
+      "error": null,
+      "total_seconds": 457.4345548330002,
+      "metrics": {
+        "model": "gemini-3.5-flash-lite",
+        "total_samples": 80,
+        "valid_samples": 70,
+        "correct_samples": 38,
+        "invalid_samples": 10,
+        "overall_accuracy": 0.475,
+        "valid_accuracy": 0.5428571428571428,
+        "invalid_parsing_rate": 0.125,
+        "domain_accuracy": {
+          "STEM": 0.2,
+          "Humanities": 0.85,
+          "Social_Sciences": 0.4,
+          "Other": 0.45
+        },
+        "domain_accuracy_mean": 0.475,
+        "subject_accuracy": {
+          "college_computer_science": 0.2,
+          "high_school_mathematics": 0.2,
+          "philosophy": 0.9,
+          "world_religions": 0.8,
+          "econometrics": 0.1,
+          "high_school_psychology": 0.7,
+          "clinical_knowledge": 0.5,
+          "professional_law": 0.4
+        },
+        "option_recall": {
+          "A": 0.8,
+          "B": 0.5,
+          "C": 0.34782608695652173,
+          "D": 0.2857142857142857
+        },
+        "recall_std": 0.19872785828974704,
+        "average_latency_seconds": 1.2694267577873917,
+        "missing_predictions": 0,
+        "category_scores": {
+          "STEM": {
+            "total": 20,
+            "valid": 16,
+            "correct": 4,
+            "invalid": 4,
+            "accuracy": 0.2
+          },
+          "Humanities": {
+            "total": 20,
+            "valid": 19,
+            "correct": 17,
+            "invalid": 1,
+            "accuracy": 0.85
+          },
+          "Social_Sciences": {
+            "total": 20,
+            "valid": 17,
+            "correct": 8,
+            "invalid": 3,
+            "accuracy": 0.4
+          },
+          "Other": {
+            "total": 20,
+            "valid": 18,
+            "correct": 9,
+            "invalid": 2,
+            "accuracy": 0.45
+          }
+        },
+        "subject_scores": {
+          "college_computer_science": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 9,
+            "correct": 2,
+            "invalid": 1,
+            "accuracy": 0.2
+          },
+          "high_school_mathematics": {
+            "category": "STEM",
+            "total": 10,
+            "valid": 7,
+            "correct": 2,
+            "invalid": 3,
+            "accuracy": 0.2
+          },
+          "philosophy": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 9,
+            "correct": 9,
+            "invalid": 1,
+            "accuracy": 0.9
+          },
+          "world_religions": {
+            "category": "Humanities",
+            "total": 10,
+            "valid": 10,
+            "correct": 8,
+            "invalid": 0,
+            "accuracy": 0.8
+          },
+          "econometrics": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 7,
+            "correct": 1,
+            "invalid": 3,
+            "accuracy": 0.1
+          },
+          "high_school_psychology": {
+            "category": "Social_Sciences",
+            "total": 10,
+            "valid": 10,
+            "correct": 7,
+            "invalid": 0,
+            "accuracy": 0.7
+          },
+          "clinical_knowledge": {
+            "category": "Other",
+            "total": 10,
+            "valid": 9,
+            "correct": 5,
+            "invalid": 1,
+            "accuracy": 0.5
+          },
+          "professional_law": {
+            "category": "Other",
+            "total": 10,
+            "valid": 9,
+            "correct": 4,
+            "invalid": 1,
+            "accuracy": 0.4
+          }
+        }
+      }
+    }
+  ]
+}

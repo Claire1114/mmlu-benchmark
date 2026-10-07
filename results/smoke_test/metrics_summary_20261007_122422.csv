@@ -1,0 +1,4 @@
+model,status,error,total_samples,valid_samples,correct_samples,invalid_samples,missing_predictions,overall_accuracy,valid_accuracy,invalid_parsing_rate,domain_accuracy_mean,average_latency_seconds,recall_std,total_seconds,domain_accuracy_STEM,domain_accuracy_Humanities,domain_accuracy_Social_Sciences,domain_accuracy_Other,subject_accuracy_college_computer_science,subject_accuracy_high_school_mathematics,subject_accuracy_philosophy,subject_accuracy_world_religions,subject_accuracy_econometrics,subject_accuracy_high_school_psychology,subject_accuracy_clinical_knowledge,subject_accuracy_professional_law
+qwen2.5-0.5b,completed,,1,1,0,0,0,0.0,0.0,0.0,0.0,1.5676179590000174,0.0,3.6722580839996226,0.0,,,,0.0,,,,,,,
+smollm2-1.7b,completed,,1,1,1,0,0,1.0,1.0,0.0,1.0,1.3343318750003164,0.0,5.392342541999824,1.0,,,,1.0,,,,,,,
+gemini-3.5-flash-lite,completed,,1,0,0,1,0,0.0,0.0,1.0,0.0,0.13102512499972363,0.0,0.13212879100046848,0.0,,,,0.0,,,,,,,
