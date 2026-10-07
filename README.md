@@ -96,6 +96,11 @@ mmlu-benchmark/
 │   └── smoke_test/
 │
 ├── logs/
+│   ├── .gitkeep
+│   ├── demo/
+│   │   ├── pipeline_20261006_183646.log    # 5-shot evaluation run
+│   │   └── pipeline_20261006_231014.log    # 0-shot evaluation run
+│   └── smoke_test/
 │
 ├── report/
 │   ├── .gitkeep
