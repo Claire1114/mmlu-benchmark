@@ -62,6 +62,7 @@ mmlu-benchmark/
 ├── pytest.ini
 ├── requirements.txt
 ├── README.md
+├── main.py
 │
 ├── configs/
 │   └── eval_config.yaml
