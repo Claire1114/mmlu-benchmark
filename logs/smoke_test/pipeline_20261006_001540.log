@@ -1,0 +1,89 @@
+2026-10-06 00:15:40,247 [INFO] main: MMLU benchmark pipeline starting: mode=smoke_test config=configs/eval_config.yaml output_dir=outputs/test_run models=['qwen2.5-0.5b', 'smollm2-1.7b', 'gemini-1.5-flash'] base_delay=0.0s limit=4
+2026-10-06 00:15:40,250 [INFO] src.dataset_loader: MMLUDatasetLoader ready: dataset=cais/mmlu split=test active_mode=smoke_test subjects=['college_computer_science', 'high_school_mathematics', 'philosophy', 'world_religions', 'econometrics', 'high_school_psychology', 'clinical_knowledge', 'professional_law'] seed=42
+2026-10-06 00:15:40,546 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:40,567 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:40,769 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:40,770 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-06 00:15:41,525 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:41,895 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/revision/c30699e8356da336a370243923dbaf21066bb9fe "HTTP/1.1 200 OK"
+2026-10-06 00:15:42,111 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:42,415 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:42,693 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/abstract_algebra?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:42,915 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:43,160 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/college_computer_science?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:43,426 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:43,437 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:43,643 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:43,920 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:44,214 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:44,494 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:44,740 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/high_school_mathematics?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:45,303 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:45,316 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:45,522 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:45,755 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:46,038 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:46,302 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:46,515 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/philosophy?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:46,759 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:46,785 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:46,999 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:47,354 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:47,626 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:47,876 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:48,120 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/world_religions?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:48,403 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:48,468 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:48,696 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:48,935 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:49,218 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:49,463 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:49,682 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/econometrics?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:49,918 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:49,945 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:50,205 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:50,499 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:50,873 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:51,107 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:51,381 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/high_school_psychology?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:51,600 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:51,618 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:51,831 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:52,058 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:52,375 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:52,635 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:52,878 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/clinical_knowledge?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:53,095 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:15:53,111 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:15:53,315 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:53,649 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:53,937 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:54,190 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:15:54,420 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/professional_law?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:54,469 [INFO] main: One-time loading complete: 4 sample(s) across 8 subject(s) (sample_size_per_subject=10, limit=4).
+2026-10-06 00:15:54,469 [INFO] main: Model 1/3: qwen2.5-0.5b (type=huggingface, effective_delay=0.000s)
+2026-10-06 00:15:54,469 [INFO] src.models.huggingface: Loading Hugging Face pipeline for model Qwen/Qwen2.5-0.5B-Instruct (device=None, hf_token=not set).
+2026-10-06 00:15:54,698 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-0.5B-Instruct "HTTP/1.1 200 OK"
+2026-10-06 00:15:55,075 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-0.5B-Instruct/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-10-06 00:15:55,278 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-0.5B-Instruct/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:15:55,748 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-0.5B-Instruct "HTTP/1.1 200 OK"
+2026-10-06 00:16:01,194 [INFO] main: Model 2/3: smollm2-1.7b (type=huggingface, effective_delay=0.000s)
+2026-10-06 00:16:01,194 [INFO] src.models.huggingface: Loading Hugging Face pipeline for model HuggingFaceTB/SmolLM2-1.7B-Instruct (device=None, hf_token=not set).
+2026-10-06 00:16:01,429 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/HuggingFaceTB/SmolLM2-1.7B-Instruct "HTTP/1.1 200 OK"
+2026-10-06 00:16:01,724 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/HuggingFaceTB/SmolLM2-1.7B-Instruct/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-10-06 00:16:02,037 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/HuggingFaceTB/SmolLM2-1.7B-Instruct/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:16:09,755 [INFO] main: Model 3/3: gemini-1.5-flash (type=gemini, effective_delay=0.000s)
+2026-10-06 00:16:09,756 [ERROR] main: Model gemini-1.5-flash failed and is isolated/skipped: NotImplementedError: Model type 'gemini' is not implemented in Step 4 Phase 1; planned for a later phase.
+Traceback (most recent call last):
+  File "/Users/claireweng/mmlu-benchmark/main.py", line 679, in execute_model
+    model: BaseModelInterface = build_model_interface(model_cfg, evaluation_cfg)
+                                ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/claireweng/mmlu-benchmark/src/models/interfaces.py", line 293, in build_model_interface
+    raise NotImplementedError(
+    ...<2 lines>...
+    )
+NotImplementedError: Model type 'gemini' is not implemented in Step 4 Phase 1; planned for a later phase.
+2026-10-06 00:16:09,761 [INFO] main: Model summary: qwen2.5-0.5b accuracy=0.2500 total=4 avg_latency=1.0887s status=completed
+2026-10-06 00:16:09,761 [INFO] main: Model summary: smollm2-1.7b accuracy=0.5000 total=4 avg_latency=1.0592s status=completed
+2026-10-06 00:16:09,761 [ERROR] main: Model summary: gemini-1.5-flash status=failed error=NotImplementedError: Model type 'gemini' is not implemented in Step 4 Phase 1; planned for a later phase.
+2026-10-06 00:16:09,761 [INFO] main: Pipeline finished: 2/3 model(s) completed. Artifacts: logs/smoke_test/pipeline_20261006_001540.log, outputs/test_run/smoke_test

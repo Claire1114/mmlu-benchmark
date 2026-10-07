@@ -66,9 +66,13 @@ mmlu-benchmark/
 │
 ├── configs/
 │   └── eval_config.yaml
+│
+├── data/
+│
 ├── scripts/
 │   ├── run_smoke_test.sh
 │   └── run_demo.sh
+│
 ├── src/
 │   ├── dataset_loader.py
 │   ├── evaluator.py
@@ -93,8 +97,25 @@ mmlu-benchmark/
 │
 ├── logs/
 │
+├── report/
+│   ├── .gitkeep
+│   ├── presentation.pdf
+│   └── technical_report.pdf
+│
 └── docs/
+    ├── images/
+    ├── AI_REVIEW_AND_REFACTOR_LOG.md
+    ├── step1.md
+    ├── step2.md
+    ├── step3_4_integration_spec.md
+    ├── step3.md
+    ├── step4_model_interface.md
+    ├── step5.md
+    ├── step6_dataset_loader_seed_fix.md
+    ├── step6_pipeline_integration.md
+    ├── step7_evaluator_metrics_fix.md
     └── step8_few_shot_extension.md
+
 ```
 
 ### Core Components
@@ -115,6 +136,7 @@ mmlu-benchmark/
 | `results/` | Output directory for raw model predictions and aggregated metric JSONs |
 | `logs/` | Runtime logs, execution traces, and development audits |
 | `docs/` | Technical specifications and implementation documentation |
+| `report/` | Deliverables directory containing the comprehensive technical report (technical_report.pdf) and the presentation slides (presentation.pdf)|
 
 ---
 

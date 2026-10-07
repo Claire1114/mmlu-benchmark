@@ -55,11 +55,12 @@ coverage.xml
 # 5. Benchmark Execution & Build Artifacts (執行產物與日誌)
 # ==========================================
 results/raw/*.jsonl
-*.log
-logs/*.log
 build/
 dist/
 *.egg-info/
+# 忽略原始含金鑰的 log
+logs_raw/
+*.log.bak
 
 # ==========================================
 # 6. IDE & Editor Specific Files (開發工具暫存)

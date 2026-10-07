@@ -1,0 +1,24 @@
+2026-10-06 00:08:20,949 [INFO] main: MMLU benchmark pipeline starting: mode=smoke_test config=configs/eval_config.yaml output_dir=outputs/test_run models=['qwen2.5-0.5b', 'smollm2-1.7b', 'gemini-1.5-flash'] base_delay=0.0s limit=4
+2026-10-06 00:08:20,952 [INFO] src.dataset_loader: MMLUDatasetLoader ready: dataset=cais/mmlu split=test active_mode=smoke_test subjects=['college_computer_science', 'high_school_mathematics', 'philosophy', 'world_religions', 'econometrics', 'high_school_psychology', 'clinical_knowledge', 'professional_law'] seed=42
+2026-10-06 00:08:21,234 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-10-06 00:08:21,236 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-06 00:08:21,294 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/cais/mmlu/c30699e8356da336a370243923dbaf21066bb9fe/README.md?%2Fdatasets%2Fcais%2Fmmlu%2Fresolve%2Fmain%2FREADME.md=&etag=%2208de94c560ad7420252bff6e4729f1d1683def4f%22 "HTTP/1.1 200 OK"
+2026-10-06 00:08:21,712 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:08:22,442 [INFO] httpx: HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/cais/mmlu/cais/mmlu.py "HTTP/1.1 404 Not Found"
+2026-10-06 00:08:22,774 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/revision/c30699e8356da336a370243923dbaf21066bb9fe "HTTP/1.1 200 OK"
+2026-10-06 00:08:23,054 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/datasets/cais/mmlu/resolve/c30699e8356da336a370243923dbaf21066bb9fe/.huggingface.yaml "HTTP/1.1 404 Not Found"
+2026-10-06 00:08:23,379 [INFO] httpx: HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=cais/mmlu "HTTP/1.1 200 OK"
+2026-10-06 00:08:23,650 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/abstract_algebra?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:08:23,855 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe?recursive=false&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:08:24,133 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/datasets/cais/mmlu/tree/c30699e8356da336a370243923dbaf21066bb9fe/college_computer_science?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-10-06 00:08:24,189 [ERROR] main: Failed to load MMLU samples: seed must be an integer, got None.
+Traceback (most recent call last):
+  File "/Users/claireweng/mmlu-benchmark/main.py", line 932, in run_pipeline
+    samples = _build_samples(
+        loader, plan.sample_size, subject_entries, options.limit
+    )
+  File "/Users/claireweng/mmlu-benchmark/main.py", line 489, in _build_samples
+    rows = loader.load_data(subject=subject, sample_size=sample_size)
+  File "/Users/claireweng/mmlu-benchmark/src/dataset_loader.py", line 196, in load_data
+    raise ValueError(f"seed must be an integer, got {seed!r}.")
+ValueError: seed must be an integer, got None.
