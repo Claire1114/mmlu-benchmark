@@ -479,7 +479,9 @@ class Evaluator:
                 re.search(r"(?i)\b(?:answer|choice|option|選|答案)\b", raw_output)
             )
             if has_anchor:
-                fallback_matches: List[str] = ENHANCED_FALLBACK_LETTER_REGEX.findall(raw_output)
+                fallback_matches: List[str] = ENHANCED_FALLBACK_LETTER_REGEX.findall(
+                    raw_output
+                )
                 if fallback_matches:
                     return fallback_matches[-1].upper()
             # Tier 2 plain: 獨立選項字母（作為無錨點文字的最後後備）

@@ -710,7 +710,6 @@ class TestBuildModelInterface:
         assert iface.model_name == "gemini-test"
         assert "generativelanguage.googleapis.com" in iface.endpoint
 
-
     def test_invalid_retry_values_fall_back_to_defaults(self) -> None:
         with patch.dict(os.environ, {"GROQ_API_KEY": "k"}):
             iface = build_model_interface(

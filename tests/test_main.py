@@ -42,15 +42,16 @@ TIMESTAMP_PATTERN = re.compile(r"(\d{8}_\d{6})")
 
 # ---------------------------------------------------------------------------
 # 離線測試替身
-#---------------------------------------------------------------------------
-class StubLoader: 
+# ---------------------------------------------------------------------------
+class StubLoader:
     """``MMLUDatasetLoader`` 之記憶體替身（零網路、零磁碟）。
 
     固定 2 科目（STEM/subj_alpha、Humanities/subj_beta）× ``sample_size``
     題；答案循環 A/B/C/D，使「全答 A」的 fixed mock 可產出確定性指標。
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         config_path: str = "configs/eval_config.yaml",
         num_shots: Optional[int] = None,
         **kwargs: Any,

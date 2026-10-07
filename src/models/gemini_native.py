@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Mapping, Optional
+from typing import Optional
+
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from src.models.base import ERROR_PREFIX, BaseModelInterface
 
@@ -49,7 +55,7 @@ class GeminiNativeInterface(BaseModelInterface):
         # 原生 generateContent 端點
         self.endpoint = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model_id}:generateContent?key={self.api_key}"
+            f"{clean_model_id}:generateContent?key={self.api_key}"
         )
 
     def _call_api(self, prompt: str) -> str:
@@ -82,7 +88,12 @@ class GeminiNativeInterface(BaseModelInterface):
 
         data = resp.json()
         try:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            # 假設原本是：
+            # return data["candidates"][0]["content"]["parts"][0]["text"]
+            # ✅ 改為加上 str() 顯式轉型：
+            content = data["candidates"][0]["content"]["parts"][0]["text"]
+            return str(content)
+
         except (KeyError, IndexError):
             LOGGER.warning("Gemini returned empty or unexpected structure: %s", data)
             return ""

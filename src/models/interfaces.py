@@ -45,7 +45,7 @@ SUPPORTED_TYPES: frozenset[str] = frozenset(
         "groq",
         "ollama",
         "openrouter",
-        "gemini", 
+        "gemini",
         "huggingface",
         "hf_pipeline",
     }
@@ -401,7 +401,7 @@ def build_model_interface(
         model_name=name,
         model_id=model_id,
         provider=model_type,
-        base_url=_optional_str(model_cfg, "base_url"),            
+        base_url=_optional_str(model_cfg, "base_url"),
         api_key_env_var=_optional_str(model_cfg, "api_key_env_var"),
         max_retries=_coerce_int(
             retry.get("max_retries"),

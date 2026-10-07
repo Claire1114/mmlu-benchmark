@@ -69,7 +69,9 @@ class MMLUDatasetLoader:
     """
 
     def __init__(
-        self, config_path: str = "configs/eval_config.yaml", num_shots: Optional[int] = None
+        self,
+        config_path: str = "configs/eval_config.yaml",
+        num_shots: Optional[int] = None,
     ) -> None:
         """載入 YAML 設定檔並初始化內部快取。
 
@@ -250,7 +252,9 @@ class MMLUDatasetLoader:
             )
 
         # Few-Shot 模式：自 dev split 載入範例
-        exemplars: List[Dict[str, Any]] = self._load_dev_exemplars(subject, self._num_shots)
+        exemplars: List[Dict[str, Any]] = self._load_dev_exemplars(
+            subject, self._num_shots
+        )
         parts: List[str] = []
 
         # 1. 組裝 Few-Shot 範例：乾淨的「問題 + 選項 + 標準答案」，不套用含格式指令的 template
@@ -258,7 +262,7 @@ class MMLUDatasetLoader:
             ex_q: str = str(ex.get("question") or "")
             ex_a, ex_b, ex_c, ex_d = self._extract_choices(ex)
             ex_ans: str = str(ex.get("answer_letter") or "").strip()
-            
+
             parts.append(
                 f"Question: {ex_q}\n"
                 f"A. {ex_a}\n"
@@ -282,7 +286,6 @@ class MMLUDatasetLoader:
         # 3. 雙換行合併所有段落
         return "\n\n".join(parts)
 
-
     def _load_dev_exemplars(self, subject: str, k: int) -> List[Dict[str, Any]]:
         """從 ``dev`` split 載入 ``k`` 筆 Few-Shot 範例。
 
@@ -299,7 +302,7 @@ class MMLUDatasetLoader:
         Returns:
             長度為 ``min(k, available_dev_count)`` 的範例清單。
         """
-        from src.dataset_loader import load_dataset  # local import to avoid circular
+        from datasets import load_dataset
 
         # 決定使用的 split 為 dev
         dev_split: str = "dev"
@@ -317,7 +320,9 @@ class MMLUDatasetLoader:
             return []
 
         # 正規化資料列
-        records: List[Dict[str, Any]] = self._coerce_records(raw_dataset, split=dev_split)
+        records: List[Dict[str, Any]] = self._coerce_records(
+            raw_dataset, split=dev_split
+        )
         normalized: List[Dict[str, Any]] = []
         for row in records:
             item: Optional[Dict[str, Any]] = self._normalize_row(

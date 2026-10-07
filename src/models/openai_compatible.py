@@ -65,11 +65,10 @@ PROVIDER_PRESETS: Mapping[str, Mapping[str, str]] = {
         "api_key_env_var": "OPENAI_API_KEY",
         "key_placeholder": "openai-compatible",
     },
-        "gemini": {
+    "gemini": {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "api_key_env_var": "GEMINI_API_KEY",
     },
-
 }
 
 #: 可重試例外型別：429 限流、5xx 伺服器錯誤、連線／逾時異常
