@@ -28,8 +28,8 @@ python -c "from src.models.gemini_native import GeminiNativeInterface; m = Gemin
 # 3. 冒煙測試（單一輕量模型快速驗證）
 echo "[INFO] 啟動管線測試..."
 python main.py \
-    --mode demo \
-    --models smollm2-1.7b \
+    --mode smoke_test\
+    --models qwen2.5-0.5b smollm2-1.7b gemini-3.1-flash-lite \
     --shots 0 \
     --delay 8.0
 
